@@ -4,3 +4,5 @@ dist/
 .env*
 .internal/
 .omx/
+docs/.next/
+docs/out/
