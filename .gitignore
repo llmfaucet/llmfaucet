@@ -2,6 +2,7 @@ node_modules/
 .wrangler/
 dist/
 .env*
+!.env.example
 .internal/
 .omx/
 docs/.next/
