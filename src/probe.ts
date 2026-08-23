@@ -1,21 +1,26 @@
 import type { Env, Model } from './types';
 
-const defaults: Record<string, string> = { pollinations: 'https://text.pollinations.ai/openai', llm7: 'https://api.llm7.io/v1/chat/completions', 'opencode-zen': 'https://opencode.ai/zen/v1/chat/completions', ovh: 'https://oai.endpoints.kepler.ai.cloud.ovh.net/v1/chat/completions' };
-const keys: Record<string, keyof Env> = { pollinations: 'POLLINATIONS_URL', llm7: 'LLM7_URL', 'opencode-zen': 'OPENCODE_ZEN_URL', ovh: 'OVH_URL' };
+const defaults: Record<string, string> = { pollinations: 'https://text.pollinations.ai/openai', llm7: 'https://api.llm7.io/v1/chat/completions', 'opencode-zen': 'https://opencode.ai/zen/v1/chat/completions', ovh: 'https://oai.endpoints.kepler.ai.cloud.ovh.net/v1/chat/completions', 'ai-horde': 'https://aihorde.net/api/v2/status' };
+const keys: Record<string, keyof Env> = { pollinations: 'POLLINATIONS_URL', llm7: 'LLM7_URL', 'opencode-zen': 'OPENCODE_ZEN_URL', ovh: 'OVH_URL', 'ai-horde': 'AI_HORDE_URL' };
+
+export async function probeProvider(provider: string, env: Env, fetcher: typeof fetch = fetch): Promise<{ status: 'healthy' | 'degraded' | 'unhealthy'; latency: number }> {
+  const started = Date.now();
+  const url = (env[keys[provider]] as string | undefined) || defaults[provider];
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5000);
+  try {
+    const horde = provider === 'ai-horde';
+    const response = await fetcher(url, horde ? { headers: { apikey: '0000000000' }, signal: controller.signal } : { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ model: 'health-check', messages: [{ role: 'user', content: 'ping' }], max_tokens: 1 }), signal: controller.signal });
+    return { status: response.ok ? 'healthy' : 'degraded', latency: Date.now() - started };
+  } catch { return { status: 'unhealthy', latency: Date.now() - started }; }
+  finally { clearTimeout(timer); }
+}
 
 export async function probeProviders(env: Env, models: Model[]): Promise<void> {
-  const selected = [...new Map(models.filter((m) => m.provider !== 'ai-horde').map((m) => [m.provider, m])).values()];
+  const selected = [...new Set(models.map((m) => m.provider))];
   await Promise.all(selected.map(async (model) => {
-    const started = Date.now();
-    const url = (env[keys[model.provider]] as string | undefined) || defaults[model.provider];
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 5000);
-    try {
-      const response = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ model: model.id.split('/').slice(1).join('/'), messages: [{ role: 'user', content: 'ping' }], max_tokens: 1 }), signal: controller.signal });
-      await env.BUDGETS.put(`health:${model.provider}`, JSON.stringify({ status: response.ok ? 'healthy' : 'degraded', latency: Date.now() - started, checked_at: Date.now() }), { expirationTtl: 7200 });
-    } catch {
-      await env.BUDGETS.put(`health:${model.provider}`, JSON.stringify({ status: 'unhealthy', latency: Date.now() - started, checked_at: Date.now() }), { expirationTtl: 7200 });
-    } finally { clearTimeout(timer); }
+    const result = await probeProvider(model, env);
+    await env.BUDGETS.put(`health:${model}`, JSON.stringify({ ...result, checked_at: Date.now() }), { expirationTtl: 7200 });
   }));
 }
 

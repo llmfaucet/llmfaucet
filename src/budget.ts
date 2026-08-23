@@ -10,10 +10,20 @@ async function ipIdentity(request: Request): Promise<string> {
   return [...new Uint8Array(digest)].map((x) => x.toString(16).padStart(2, '0')).join('');
 }
 
+async function opaqueIdentity(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
+  return [...new Uint8Array(digest)].map((x) => x.toString(16).padStart(2, '0')).join('');
+}
+
+function bearer(request: Request): string | undefined {
+  const value = request.headers.get('authorization') ?? '';
+  return /^Bearer\s+(.+)$/i.exec(value)?.[1];
+}
+
 export async function consumeBudget(request: Request, env: Env): Promise<{ allowed: boolean; remaining: number; reset: number }> {
-  const token = request.headers.get('authorization')?.slice(7);
+  const token = bearer(request);
   const registered = Boolean(token && env.DB && (await env.DB.prepare('SELECT token FROM tokens WHERE token = ?').bind(token).first()));
-  const id = registered ? token! : await ipIdentity(request);
+  const id = registered ? await opaqueIdentity(`token:${token}`) : await ipIdentity(request);
   const reset = Math.ceil(Date.now() / DAY) * DAY;
   const key = `budget:${id}:${new Date(reset).toISOString().slice(0, 10)}`;
   const limit = registered ? REGISTERED_LIMIT : ANONYMOUS_LIMIT;

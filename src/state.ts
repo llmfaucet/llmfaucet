@@ -9,7 +9,8 @@ export async function catalog(env: Env): Promise<Model[]> {
 }
 
 export async function unhealthyProviders(env: Env): Promise<Set<string>> {
-  const providers = [...new Set(MODELS.map((model) => model.provider))];
+  const active = await catalog(env);
+  const providers = [...new Set([...MODELS, ...active].map((model) => model.provider))];
   const statuses = await Promise.all(providers.map(async (provider) => [provider, await env.BUDGETS.get(`health:${provider}`, 'json')] as const));
   return new Set(statuses.filter(([, value]) => (value as any)?.status === 'unhealthy').map(([provider]) => provider));
 }
