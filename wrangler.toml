@@ -32,11 +32,11 @@ routes = [{ pattern = "api.llmfaucet.dev", custom_domain = true }]
 vars = { ENVIRONMENT = "production", CATALOG_URL = "" }
 [[env.production.kv_namespaces]]
 binding = "BUDGETS"
-id = "replace-with-prod-kv-id"
+id = "9d5fca7879c445edba258aed07f3849f"
 [[env.production.d1_databases]]
 binding = "DB"
 database_name = "llmfaucet-prod"
-database_id = "replace-with-prod-d1-id"
+database_id = "97eabec5-22a7-4115-9461-bdd9ba51abcc"
 [[env.production.queues.producers]]
 binding = "QUEUE"
 queue = "llmfaucet-queue-prod"
@@ -53,11 +53,11 @@ routes = [{ pattern = "api.llmfaucet-preview.dev", custom_domain = true }]
 vars = { ENVIRONMENT = "preview", CATALOG_URL = "" }
 [[env.preview.kv_namespaces]]
 binding = "BUDGETS"
-id = "replace-with-preview-kv-id"
+id = "a6a725fd094b4080b5c4084283e9bde5"
 [[env.preview.d1_databases]]
 binding = "DB"
 database_name = "llmfaucet-preview"
-database_id = "replace-with-preview-d1-id"
+database_id = "3fd26080-4b14-4b82-b555-8854ce8bbba4"
 [[env.preview.queues.producers]]
 binding = "QUEUE"
 queue = "llmfaucet-queue-preview"
