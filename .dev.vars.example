@@ -1,0 +1,15 @@
+# Local Worker bindings. Keep real credentials in `.dev.vars`, never commit them.
+ENVIRONMENT=development
+CATALOG_URL=
+BUDGET_HASH_SECRET=generate-a-long-random-value
+POLLINATIONS_URL=https://text.pollinations.ai/openai
+LLM7_URL=https://api.llm7.io/v1/chat/completions
+OPENCODE_ZEN_URL=https://opencode.ai/zen/v1/chat/completions
+OVH_URL=https://oai.endpoints.kepler.ai.cloud.ovh.net/v1/chat/completions
+AI_HORDE_URL=https://aihorde.net/api/v2/generate/async
+
+# Optional local-only IDs/secrets for the VPS probe. Do not use a Global API key.
+CF_ACCOUNT_ID=
+CF_API_TOKEN=
+CF_KV_NAMESPACE_ID=
+CF_D1_DATABASE_ID=

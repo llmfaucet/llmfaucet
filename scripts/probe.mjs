@@ -5,7 +5,7 @@ const providers = {
   llm7: process.env.LLM7_URL || 'https://api.llm7.io/v1/chat/completions',
   'opencode-zen': process.env.OPENCODE_ZEN_URL || 'https://opencode.ai/zen/v1/chat/completions',
   ovh: process.env.OVH_URL || 'https://oai.endpoints.kepler.ai.cloud.ovh.net/v1/chat/completions',
-  'ai-horde': 'https://aihorde.net/api/v2/status'
+  'ai-horde': process.env.AI_HORDE_URL ? process.env.AI_HORDE_URL.replace(/\/generate\/async$/, '/status') : 'https://aihorde.net/api/v2/status'
 };
 const interval = Number(process.env.PROBE_INTERVAL_MS || 3600000);
 const once = process.argv.includes('--once');
@@ -19,7 +19,7 @@ async function probe(name, url) {
     const response = await fetch(url, horde
       ? { headers: { apikey: '0000000000' }, signal: controller.signal }
       : { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ model: 'health-check', messages: [{ role: 'user', content: 'ping' }], max_tokens: 1 }), signal: controller.signal });
-    return { provider: name, status: response.ok ? 'healthy' : 'degraded', latency: Date.now() - started, checked_at: Date.now() };
+    return { provider: name, status: response.ok ? 'healthy' : 'unhealthy', latency: Date.now() - started, checked_at: Date.now() };
   } catch (error) {
     return { provider: name, status: 'unhealthy', latency: Date.now() - started, checked_at: Date.now(), error: error?.name === 'AbortError' ? 'timeout' : 'request_failed' };
   } finally { clearTimeout(timer); }

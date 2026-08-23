@@ -11,8 +11,8 @@ export const MODELS: Model[] = [
   { id: 'ovh/llama-3.1-8b', provider: 'ovh', capabilities: ['chat', 'completion'], quality: 6, speed: 7, context: 128000, supported_parameters: ['temperature', 'max_tokens', 'stream'] },
   { id: 'ovh/qwen2.5-vl-72b', provider: 'ovh', capabilities: ['chat', 'vision'], quality: 8, speed: 5, context: 32768, supported_parameters: ['temperature', 'max_tokens', 'stream'] },
   { id: 'horde/auto', provider: 'ai-horde', capabilities: ['chat'], quality: 6, speed: 2, context: 32768, supported_parameters: ['temperature', 'max_tokens'] }
-  ,{ id: 'ovh/bge-m3', provider: 'ovh', capabilities: ['embeddings'], quality: 7, speed: 6, context: 8192, supported_parameters: [] }
+  ,{ id: 'ovh/bge-m3', provider: 'ovh', capabilities: ['embeddings'], quality: 7, speed: 6, context: 8192, supported_parameters: [], family: 'bge-m3' }
 ];
 
 export function publicModels(): Model[] { return MODELS; }
-export function findModel(id: string): Model | undefined { return MODELS.find((m) => m.id === id); }
+export function findModel(id: string, models: Model[] = MODELS): Model | undefined { return models.find((m) => m.id === id); }

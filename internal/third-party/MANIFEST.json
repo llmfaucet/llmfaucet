@@ -1,0 +1,103 @@
+{
+  "generatedAt": "2026-08-23T22:52:02.727Z",
+  "repositories": [
+    {
+      "name": "freellmapi",
+      "url": "https://github.com/tashfeenahmed/freellmapi.git",
+      "directory": "internal/third-party/freellmapi",
+      "license": "MIT",
+      "commit": "e86764ee9f804d13c2338144519568922dca8ad4",
+      "defaultBranch": "main",
+      "purpose": [
+        "OpenAI and Anthropic wire-format translation",
+        "Provider adapter patterns",
+        "Streaming and fallback patterns"
+      ],
+      "allowedUse": "Architecture and documentation reference only",
+      "prohibitedUse": [
+        "Direct runtime dependency",
+        "Unreviewed code copying",
+        "SQLite and single-user architecture adoption"
+      ],
+      "status": "pending-review"
+    },
+    {
+      "name": "litellm",
+      "url": "https://github.com/BerriAI/litellm.git",
+      "directory": "internal/third-party/litellm",
+      "license": "MIT (enterprise directory separately licensed)",
+      "commit": "f005afa1460385a218be8ef1fdfa49998bf93523",
+      "defaultBranch": "main",
+      "purpose": [
+        "Provider normalization",
+        "Parameter compatibility",
+        "Retry and error patterns"
+      ],
+      "allowedUse": "Architecture and documentation reference only",
+      "prohibitedUse": [
+        "Direct runtime dependency",
+        "Billing or enterprise features",
+        "Unsupported server dependencies"
+      ],
+      "status": "pending-review"
+    },
+    {
+      "name": "ai-horde",
+      "url": "https://github.com/Haidra-Org/AI-Horde.git",
+      "directory": "internal/third-party/ai-horde",
+      "license": "AGPL-3.0",
+      "commit": "ff6bc5bc5bfdae7aa12d6143d875c9915cbc1dda",
+      "defaultBranch": "main",
+      "purpose": [
+        "Public capacity and queue lifecycle",
+        "Fairness and model availability"
+      ],
+      "allowedUse": "Architecture and documentation reference only",
+      "prohibitedUse": [
+        "Worker-node execution code",
+        "GPU orchestration",
+        "User-account or credit mechanisms"
+      ],
+      "status": "pending-review"
+    },
+    {
+      "name": "pollinations",
+      "url": "https://github.com/pollinations/pollinations.git",
+      "directory": "internal/third-party/pollinations",
+      "license": "MIT",
+      "commit": "9bd7f22361cd2a86f29689e19a3a36db2dabb7b1",
+      "defaultBranch": "main",
+      "purpose": [
+        "Public API behavior",
+        "Model catalog and anonymous access documentation"
+      ],
+      "allowedUse": "Architecture and documentation reference only",
+      "prohibitedUse": [
+        "Service implementation",
+        "Payment or account mechanisms",
+        "Undocumented access"
+      ],
+      "status": "pending-review"
+    },
+    {
+      "name": "gpt4free",
+      "url": "https://github.com/xtekky/gpt4free.git",
+      "directory": "internal/third-party/gpt4free",
+      "license": "GPL-3.0",
+      "commit": "eef67f8ca518a3b97648d21f2627abac3d01186e",
+      "defaultBranch": "main",
+      "purpose": [
+        "Client compatibility ergonomics",
+        "Streaming and error-handling contrast"
+      ],
+      "allowedUse": "Architecture and documentation reference only",
+      "prohibitedUse": [
+        "Scrapers",
+        "Browser automation",
+        "Cookie or account automation",
+        "Unofficial providers"
+      ],
+      "status": "pending-review"
+    }
+  ]
+}

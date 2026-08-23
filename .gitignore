@@ -7,3 +7,10 @@ dist/
 .omx/
 docs/.next/
 docs/out/
+
+# Local third-party architecture references
+/internal/third-party/freellmapi/
+/internal/third-party/litellm/
+/internal/third-party/ai-horde/
+/internal/third-party/pollinations/
+/internal/third-party/gpt4free/

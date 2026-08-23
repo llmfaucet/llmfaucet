@@ -11,6 +11,7 @@ export interface Env {
   OVH_URL?: string;
   AI_HORDE_URL?: string;
   CATALOG_URL?: string;
+  BUDGET_HASH_SECRET?: string;
 }
 
 export interface Model {
@@ -21,6 +22,7 @@ export interface Model {
   speed: number;
   context: number;
   supported_parameters: string[];
+  family?: string;
 }
 
 export interface ChatMessage { role: string; content: unknown; name?: string; tool_calls?: unknown[]; }

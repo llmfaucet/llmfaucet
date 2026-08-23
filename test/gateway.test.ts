@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import handler from '../src/index';
 import { consumeBudget } from '../src/budget';
 import { probeProvider } from '../src/probe';
+import { entitlementFor } from '../src/sponsors/entitlements';
+import { generateApiKey, hashApiKey } from '../src/sponsors/keys';
 
 class MemoryKV {
   data = new Map<string, string>();
@@ -35,6 +37,10 @@ const probe = await probeProvider('ai-horde', { BUDGETS: new MemoryKV(), ENVIRON
   return new Response('{}', { status: 200 });
 });
 assert.equal(probe.status, 'healthy');
+assert.equal(entitlementFor('supporter').requestsPerDay, 200);
+const generatedKey = generateApiKey();
+assert.ok(generatedKey.startsWith('llmfaucet_'));
+assert.notEqual(await hashApiKey(generatedKey), generatedKey);
 
 const originalFetch = globalThis.fetch;
 let attempts = 0;

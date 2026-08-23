@@ -5,3 +5,5 @@ export function responseHeaders(remaining: number, reset: number, provider?: str
 }
 
 export function error(message: string, status: number, headers?: HeadersInit): Response { return Response.json({ error: { message, type: status === 429 ? 'rate_limit_error' : 'invalid_request_error' } }, { status, headers: { 'access-control-allow-origin': '*', ...headers } }); }
+
+export function anthropicError(message: string, status: number, headers?: HeadersInit): Response { return Response.json({ type: 'error', error: { type: status === 429 ? 'rate_limit_error' : 'invalid_request_error', message } }, { status, headers: { 'access-control-allow-origin': '*', ...headers } }); }

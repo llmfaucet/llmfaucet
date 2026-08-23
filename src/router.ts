@@ -12,13 +12,13 @@ export function normalize(body: Record<string, unknown>, capability: NormalizedR
 }
 
 export function selectModel(req: NormalizedRequest, unhealthy = new Set<string>(), models = MODELS): Model | undefined {
-  const requested = findModel(req.model);
+  const requested = findModel(req.model, models);
   if (requested && requested.capabilities.includes(req.capability) && !(req.stream && requested.provider === 'ai-horde') && !unhealthy.has(requested.provider)) return requested;
   const selector = aliases[req.selector.replace(/^auto:?/, '')] ?? 'auto';
   return models.filter((m) => m.capabilities.includes(req.capability) && !(req.stream && m.provider === 'ai-horde') && (!req.tools || m.capabilities.includes('tools')) && !unhealthy.has(m.provider)).sort((a, b) => {
     const ac = selector === 'coding' && /(coder|code|deepseek)/i.test(a.id) ? 5 : 0;
     const bc = selector === 'coding' && /(coder|code|deepseek)/i.test(b.id) ? 5 : 0;
-    return selector === 'fast' ? b.speed - a.speed : selector === 'smart' ? b.quality - a.quality : (bc + bc + b.quality + b.speed) - (ac + ac + a.quality + a.speed);
+    return selector === 'fast' ? b.speed - a.speed : selector === 'smart' ? b.quality - a.quality : (bc + b.quality * 3 + b.speed * 2) - (ac + a.quality * 3 + a.speed * 2);
   })[0];
 }
 

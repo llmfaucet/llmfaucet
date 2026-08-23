@@ -1,7 +1,8 @@
 import { MODELS } from './catalog';
 import type { Env, Model } from './types';
 
-const valid = (value: unknown): value is Model[] => Array.isArray(value) && value.every((model) => model && typeof model.id === 'string' && typeof model.provider === 'string' && Array.isArray(model.capabilities));
+const knownProviders = new Set(MODELS.map((model) => model.provider));
+const valid = (value: unknown): value is Model[] => Array.isArray(value) && value.length > 0 && value.every((model) => model && typeof model.id === 'string' && typeof model.provider === 'string' && knownProviders.has(model.provider) && Array.isArray(model.capabilities) && typeof model.quality === 'number' && typeof model.speed === 'number' && typeof model.context === 'number' && Array.isArray(model.supported_parameters));
 
 export async function catalog(env: Env): Promise<Model[]> {
   const raw = await env.BUDGETS.get('catalog:active', 'json');
