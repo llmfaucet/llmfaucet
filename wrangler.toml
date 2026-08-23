@@ -1,6 +1,6 @@
 name = "llmfaucet"
 main = "src/index.ts"
-compatibility_date = "2026-08-24"
+compatibility_date = "2026-08-23"
 workers_dev = true
 
 [triggers]
