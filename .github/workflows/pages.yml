@@ -9,11 +9,9 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
-      - uses: cloudflare/pages-action@v1
+      - uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: llmfaucet
-          directory: public
-          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
-          branch: ${{ github.ref_name }}
+          wranglerVersion: "4"
+          command: pages deploy public --project-name llmfaucet --branch ${{ github.ref_name }}
