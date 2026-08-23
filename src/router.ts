@@ -13,7 +13,7 @@ export function normalize(body: Record<string, unknown>, capability: NormalizedR
 
 export function selectModel(req: NormalizedRequest, unhealthy = new Set<string>(), models = MODELS): Model | undefined {
   const requested = findModel(req.model, models);
-  if (requested && requested.capabilities.includes(req.capability) && !(req.stream && requested.provider === 'ai-horde') && !unhealthy.has(requested.provider)) return requested;
+  if (requested && requested.capabilities.includes(req.capability) && (!req.tools || requested.capabilities.includes('tools')) && !(req.stream && requested.provider === 'ai-horde') && !unhealthy.has(requested.provider)) return requested;
   const selector = aliases[req.selector.replace(/^auto:?/, '')] ?? 'auto';
   return models.filter((m) => m.capabilities.includes(req.capability) && !(req.stream && m.provider === 'ai-horde') && (!req.tools || m.capabilities.includes('tools')) && !unhealthy.has(m.provider)).sort((a, b) => {
     const ac = selector === 'coding' && /(coder|code|deepseek)/i.test(a.id) ? 5 : 0;
@@ -22,4 +22,8 @@ export function selectModel(req: NormalizedRequest, unhealthy = new Set<string>(
   })[0];
 }
 
-export function capabilityError(capability: string): Response { return Response.json({ error: { message: `No model supports ${capability}`, type: 'invalid_request_error', code: `no_${capability}_model` } }, { status: 422 }); }
+export function capabilityError(capability: string, wire: 'openai' | 'anthropic' = 'openai'): Response {
+  return wire === 'anthropic'
+    ? Response.json({ type: 'error', error: { type: 'invalid_request_error', message: `No model supports ${capability}` } }, { status: 422 })
+    : Response.json({ error: { message: `No model supports ${capability}`, type: 'invalid_request_error', code: `no_${capability}_model` } }, { status: 422 });
+}

@@ -12,6 +12,12 @@ export interface Env {
   AI_HORDE_URL?: string;
   CATALOG_URL?: string;
   BUDGET_HASH_SECRET?: string;
+  GITHUB_CLIENT_ID?: string;
+  GITHUB_CLIENT_SECRET?: string;
+  GITHUB_SESSION_SECRET?: string;
+  GITHUB_SPONSORS_WEBHOOK_SECRET?: string;
+  GITHUB_SPONSOR_LOGIN?: string;
+  PUBLIC_BASE_URL?: string;
 }
 
 export interface Model {

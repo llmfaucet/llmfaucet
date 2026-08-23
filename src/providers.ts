@@ -8,7 +8,14 @@ function endpoint(provider: string, env: Env): string { return env[envKeys[provi
 export async function callProvider(model: Model, req: NormalizedRequest, env: Env): Promise<ProviderResult> {
   const headers = new Headers({ 'content-type': 'application/json', accept: req.stream ? 'text/event-stream' : 'application/json' });
   const input = req.raw.input ?? req.raw.prompt;
-  const body = req.capability === 'embeddings' ? { model: model.id.split('/').slice(1).join('/'), input } : { ...req.raw, model: model.id.split('/').slice(1).join('/'), messages: req.messages, stream: req.stream };
+  const passThrough = ['top_p', 'stop', 'frequency_penalty', 'presence_penalty', 'seed', 'stream_options'];
+  const extras = Object.fromEntries(passThrough.filter((key) => req.raw[key] !== undefined).map((key) => [key, req.raw[key]]));
+  const body = req.capability === 'embeddings' ? { model: model.id.split('/').slice(1).join('/'), input } : {
+    ...extras,
+    model: model.id.split('/').slice(1).join('/'), messages: req.messages, stream: req.stream,
+    ...(req.max_tokens === undefined ? {} : { max_tokens: req.max_tokens }), ...(req.temperature === undefined ? {} : { temperature: req.temperature }),
+    ...(req.tools === undefined ? {} : { tools: req.tools }), ...(req.tool_choice === undefined ? {} : { tool_choice: req.tool_choice }), ...(req.response_format === undefined ? {} : { response_format: req.response_format })
+  };
   if (model.provider === 'ai-horde') return horde(model, req, env);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 15000);
