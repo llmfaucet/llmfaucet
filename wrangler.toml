@@ -28,6 +28,8 @@ max_batch_size = 10
 [env.production]
 name = "llmfaucet"
 workers_dev = true
+# Disabled until llmfaucet.dev is owned and attached to this Cloudflare account.
+# routes = [{ pattern = "api.llmfaucet.dev", custom_domain = true }]
 vars = { ENVIRONMENT = "production", CATALOG_URL = "" }
 [[env.production.kv_namespaces]]
 binding = "BUDGETS"
@@ -48,6 +50,8 @@ crons = ["0 * * * *", "0 0 * * *"]
 [env.preview]
 name = "llmfaucet-preview"
 workers_dev = true
+# Disabled until llmfaucet-preview.dev is owned and attached to this Cloudflare account.
+# routes = [{ pattern = "api.llmfaucet-preview.dev", custom_domain = true }]
 vars = { ENVIRONMENT = "preview", CATALOG_URL = "" }
 [[env.preview.kv_namespaces]]
 binding = "BUDGETS"
