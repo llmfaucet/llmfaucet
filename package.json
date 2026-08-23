@@ -1,0 +1,19 @@
+{
+  "name": "llmfaucet",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": { "llmfaucet": "bin/llmfaucet.mjs" },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "test": "tsx test/gateway.test.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260823.1",
+    "@types/node": "^22.18.0",
+    "tsx": "^4.20.3",
+    "typescript": "^5.9.2"
+  }
+}
