@@ -27,8 +27,7 @@ max_batch_size = 10
 
 [env.production]
 name = "llmfaucet"
-workers_dev = false
-routes = [{ pattern = "api.llmfaucet.dev", custom_domain = true }]
+workers_dev = true
 vars = { ENVIRONMENT = "production", CATALOG_URL = "" }
 [[env.production.kv_namespaces]]
 binding = "BUDGETS"
@@ -48,8 +47,7 @@ crons = ["0 * * * *", "0 0 * * *"]
 
 [env.preview]
 name = "llmfaucet-preview"
-workers_dev = false
-routes = [{ pattern = "api.llmfaucet-preview.dev", custom_domain = true }]
+workers_dev = true
 vars = { ENVIRONMENT = "preview", CATALOG_URL = "" }
 [[env.preview.kv_namespaces]]
 binding = "BUDGETS"
