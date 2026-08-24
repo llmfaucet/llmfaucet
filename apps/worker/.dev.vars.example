@@ -1,0 +1,21 @@
+# Local Worker bindings. Keep real credentials in `.dev.vars`, never commit them.
+ENVIRONMENT=development
+CATALOG_URL=
+BUDGET_HASH_SECRET=replace-with-random-secret
+IP_HASH_SECRET=replace-with-random-secret
+SESSION_HMAC_SECRET=replace-with-random-secret
+OAUTH_STATE_SECRET=replace-with-random-secret
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
+GITHUB_SPONSORABLE_LOGIN=justinedevs
+GITHUB_SPECIAL_SPONSORS=
+PUBLIC_METRICS_INCLUDE_AGGREGATES=false
+GITHUB_SPONSORS_WEBHOOK_SECRET=
+ADMIN_GITHUB_LOGINS=
+PUBLIC_BASE_URL=http://localhost:8787
+PUBLIC_FRONTEND_URL=http://localhost:3000
+PUBLIC_WEB_ORIGINS=http://localhost:3000,http://localhost:8787
+ANONYMOUS_DAILY_LIMIT=20
+REGISTERED_DAILY_LIMIT=50
+SUPPORTER_DAILY_LIMIT=200
+PRO_DAILY_LIMIT=500

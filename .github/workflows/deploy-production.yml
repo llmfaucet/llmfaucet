@@ -1,0 +1,8 @@
+name: Deploy production Worker
+on:
+  push:
+    branches: [main]
+jobs:
+  deploy:
+    uses: ./.github/workflows/deploy.yml
+    secrets: inherit

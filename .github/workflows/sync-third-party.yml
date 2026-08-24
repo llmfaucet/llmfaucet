@@ -1,0 +1,12 @@
+name: Refresh reference repositories
+on:
+  schedule:
+    - cron: '23 4 1 * *'
+  workflow_dispatch:
+jobs:
+  references:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: chmod +x internal/third-party/setup.sh internal/third-party/update.sh && ./internal/third-party/update.sh
+      - run: git diff --exit-code -- internal/third-party/MANIFEST.json

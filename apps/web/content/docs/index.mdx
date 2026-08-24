@@ -1,0 +1,63 @@
+---
+title: Overview
+description: One OpenAI-compatible endpoint for publicly available AI capacity.
+---
+
+![llmfaucet](/assets/banner.png)
+
+llmfaucet is a public, OpenAI-compatible gateway for officially available
+anonymous/keyless AI capacity. It normalizes requests, selects a compatible
+healthy route, and exposes standard response and rate-limit signals.
+
+This is a shared experimental service. Provider capacity, model availability,
+limits, and latency can change. It is not an SLA or a promise of a particular
+model.
+
+## Start here
+
+| Goal | Guide |
+| --- | --- |
+| Send your first request | [Quickstart](/docs/quickstart) |
+| Configure a coding tool | [Coding agents](/docs/agents) |
+| Understand fair-use limits | [Limits and fair use](/docs/limits) |
+| Inspect provider health | [Status page](/status) |
+| Join controlled preview testing | [Early testers](/docs/early-testers) |
+| Understand data handling | [Privacy](/docs/privacy) |
+
+## Endpoint contract
+
+Production and preview are isolated environments. Use the URL supplied for the
+environment you are testing:
+
+```text
+Production: https://api.llmfaucet.dev/v1
+Preview:    https://api.llmfaucet-preview.dev/v1
+```
+
+If those domains are not configured yet, use the Worker URL printed by Wrangler
+and keep `/v1` as the API base path.
+
+## Model selectors
+
+```text
+auto         General automatic routing
+auto:fast    Prefer lower-latency healthy routes
+auto:smart   Prefer higher-ranked available routes
+auto:coding  Prefer coding-tagged routes
+```
+
+Selectors are routing preferences, not guarantees. The selected route is
+reported in `X-Routed-Via` when available.
+
+## Compatibility surfaces
+
+- OpenAI chat completions: `POST /v1/chat/completions`
+- OpenAI legacy completions: `POST /v1/completions`
+- OpenAI models: `GET /v1/models`
+- Anthropic messages: `POST /v1/messages`
+- Responses compatibility: `POST /v1/responses`
+- Embeddings: `POST /v1/embeddings` when an embedding route is available
+- Service health: `GET /health` and `GET /status`
+
+Read the [quickstart](/docs/quickstart) for working requests and the [limits
+guide](/docs/limits) before connecting an unattended client.

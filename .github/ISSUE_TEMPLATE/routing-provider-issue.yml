@@ -1,0 +1,13 @@
+name: Routing or provider issue
+description: Report a route, provider, or fallback problem.
+body:
+  - type: input
+    id: routed-via
+    attributes:
+      label: Routed-via header
+  - type: textarea
+    id: details
+    attributes:
+      label: Sanitized details
+    validations:
+      required: true

@@ -1,0 +1,8 @@
+name: Deploy preview Worker
+on:
+  push:
+    branches: [dev]
+jobs:
+  deploy:
+    uses: ./.github/workflows/deploy.yml
+    secrets: inherit

@@ -1,0 +1,78 @@
+name = "llmfaucet"
+main = "src/index.ts"
+compatibility_date = "2026-05-03"
+workers_dev = true
+
+[triggers]
+crons = ["0 * * * *", "0 0 * * *"]
+
+[vars]
+ENVIRONMENT = "development"
+CATALOG_URL = ""
+
+[[durable_objects.bindings]]
+name = "QUOTA_LIMITER"
+class_name = "QuotaLimiter"
+[[ratelimits]]
+name = "EDGE_LIMITER"
+namespace_id = "1001"
+simple = { limit = 120, period = 60 }
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["QuotaLimiter"]
+
+[[kv_namespaces]]
+binding = "BUDGETS"
+id = "replace-with-dev-kv-id"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "llmfaucet-dev"
+database_id = "replace-with-dev-d1-id"
+
+[env.production]
+name = "llmfaucet"
+workers_dev = true
+# Disabled until llmfaucet.dev is owned and attached to this Cloudflare account.
+# routes = [{ pattern = "api.llmfaucet.dev", custom_domain = true }]
+vars = { ENVIRONMENT = "production", CATALOG_URL = "", PUBLIC_BASE_URL = "https://llmfaucet.dev", PUBLIC_FRONTEND_URL = "https://llmfaucet.pages.dev", PUBLIC_WEB_ORIGINS = "https://llmfaucet.dev,https://llmfaucet.pages.dev" }
+[[env.production.durable_objects.bindings]]
+name = "QUOTA_LIMITER"
+class_name = "QuotaLimiter"
+[[env.production.ratelimits]]
+name = "EDGE_LIMITER"
+namespace_id = "1001"
+simple = { limit = 120, period = 60 }
+[[env.production.kv_namespaces]]
+binding = "BUDGETS"
+id = "9d5fca7879c445edba258aed07f3849f"
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "llmfaucet-prod"
+database_id = "97eabec5-22a7-4115-9461-bdd9ba51abcc"
+[env.production.triggers]
+crons = ["0 * * * *", "0 0 * * *"]
+
+[env.preview]
+name = "llmfaucet-preview"
+workers_dev = true
+# Disabled until llmfaucet-preview.dev is owned and attached to this Cloudflare account.
+# routes = [{ pattern = "api.llmfaucet-preview.dev", custom_domain = true }]
+# The Pages preview URL is the dev branch alias; production keeps the project root.
+vars = { ENVIRONMENT = "preview", CATALOG_URL = "", PUBLIC_BASE_URL = "https://llmfaucet-preview.dev", PUBLIC_FRONTEND_URL = "https://dev.llmfaucet.pages.dev", PUBLIC_WEB_ORIGINS = "https://llmfaucet-preview.dev,https://dev.llmfaucet.pages.dev" }
+[[env.preview.durable_objects.bindings]]
+name = "QUOTA_LIMITER"
+class_name = "QuotaLimiter"
+[[env.preview.ratelimits]]
+name = "EDGE_LIMITER"
+namespace_id = "1002"
+simple = { limit = 120, period = 60 }
+[[env.preview.kv_namespaces]]
+binding = "BUDGETS"
+id = "a6a725fd094b4080b5c4084283e9bde5"
+[[env.preview.d1_databases]]
+binding = "DB"
+database_name = "llmfaucet-preview"
+database_id = "3fd26080-4b14-4b82-b555-8854ce8bbba4"
+[env.preview.triggers]
+crons = ["0 * * * *", "0 0 * * *"]

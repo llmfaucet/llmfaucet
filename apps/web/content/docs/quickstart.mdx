@@ -1,0 +1,107 @@
+---
+title: Quickstart
+description: Send a request, inspect the response, and connect an SDK.
+---
+
+# Quickstart
+
+## 1. Check the service
+
+Use the deployed API base URL. Replace the production hostname with your
+preview or Worker URL when testing preview.
+
+```bash
+curl -i https://api.llmfaucet.dev/health
+curl -sS https://api.llmfaucet.dev/v1/models | jq .
+```
+
+The models response is the source of truth for routes currently advertised by
+the gateway. A route can still become unavailable after the catalog is read.
+
+## 2. Send an OpenAI-compatible request
+
+Anonymous access uses `Bearer free`. Registered and Sponsor users can use a
+personal `llmfaucet_...` key.
+
+```bash
+curl -i https://api.llmfaucet.dev/v1/chat/completions \
+  -H 'Authorization: Bearer free' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "model": "auto:coding",
+    "messages": [
+      {"role": "user", "content": "Write a TypeScript retry helper."}
+    ],
+    "stream": false
+  }'
+```
+
+The response follows the OpenAI chat-completion shape. Inspect these headers:
+
+```text
+X-Routed-Via             Provider and model selected for the request
+X-Fallback-Attempts      Number of upstream attempts used
+X-RateLimit-Limit        Current daily request limit
+X-RateLimit-Remaining    Requests remaining for the access context
+X-RateLimit-Reset        UTC reset timestamp
+Retry-After              Seconds to wait when a retry is appropriate
+```
+
+## 3. Stream a response
+
+Streaming responses are Server-Sent Events. Consume them incrementally and do
+not assume that one network chunk equals one JSON object.
+
+```bash
+curl -N https://api.llmfaucet.dev/v1/chat/completions \
+  -H 'Authorization: Bearer free' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "model": "auto:fast",
+    "messages": [{"role": "user", "content": "Explain backoff in one paragraph."}],
+    "stream": true
+  }'
+```
+
+## 4. Use the TypeScript SDK
+
+```bash
+npm install openai
+```
+
+```ts
+import OpenAI from "openai";
+
+const client = new OpenAI({
+  baseURL: "https://api.llmfaucet.dev/v1",
+  apiKey: process.env.LLMFAUCET_API_KEY ?? "free",
+});
+
+const response = await client.chat.completions.create({
+  model: "auto:coding",
+  messages: [{ role: "user", content: "Write a TypeScript retry helper." }],
+});
+
+console.log(response.choices[0]?.message?.content);
+```
+
+Never commit a personal API key. Store it in an environment variable and
+revoke it from the dashboard if it is exposed.
+
+## 5. Request validation
+
+Requests must be JSON and must contain a non-empty `messages` array. The
+gateway enforces plan-specific body and `max_tokens` limits before routing.
+Unsupported capabilities return a structured `422` error rather than crossing
+the capability boundary.
+
+## 6. Failure handling
+
+- `401`: check the bearer value or create a new key.
+- `422`: the requested capability has no compatible healthy route.
+- `429`: honor `Retry-After` and avoid parallel retry storms.
+- `5xx`: retry with bounded exponential backoff; provider capacity may have
+  changed.
+
+Continue with [coding-agent setup](/docs/agents), then review [limits and fair
+use](/docs/limits).

@@ -1,0 +1,54 @@
+---
+title: Privacy and data handling
+description: A precise summary of identity, keys, prompts, and operational data.
+---
+
+# Privacy and data handling
+
+This page describes the intended service behavior. See the [privacy
+policy](/privacy) for the product-facing notice and [terms](/terms) for use
+conditions.
+
+## Anonymous requests
+
+Anonymous limits use the Cloudflare `CF-Connecting-IP` value only to derive a
+daily rotating HMAC-SHA-256 subject. The raw IP is not written to D1, KV,
+analytics, logs, errors, or responses. The subject changes at UTC midnight and
+is not intended to track a person across days.
+
+## Signed-in users
+
+GitHub sign-in stores the minimum identity needed to operate the account:
+numeric GitHub ID, login, optional avatar URL, account status, and timestamps.
+The OAuth access token is used during the callback and discarded. It is not
+stored in D1, KV, a cookie, a log, or an API response.
+
+## API keys
+
+The raw `llmfaucet_...` value is shown once when created. The service stores
+only a SHA-256 hash and a non-secret prefix. Existing keys cannot be recovered;
+they can be revoked and replaced.
+
+## Content and analytics
+
+Prompt and completion content is not retained by default. Operational metadata
+may include route, status, latency, request timestamp, and aggregate usage
+needed to run the service. Do not send secrets, private credentials, or
+sensitive source code to a shared preview service.
+
+## Waitlist and early testers
+
+Applications store qualification details such as tool, use case, operating
+system, expected volume, tester goal, and agreement timestamps. Reviewer notes
+are private. Waitlist records and events are removed with account deletion.
+Sponsorship is not required for selection.
+
+## Your controls
+
+- Revoke individual API keys from the dashboard.
+- Sign out to revoke the current session.
+- Delete the account to remove personal records and active credentials.
+- Contact the project through GitHub Issues for privacy questions.
+
+Aggregate, non-identifying service statistics may remain after deletion. See
+[early testers](/docs/early-testers) for preview-specific handling.

@@ -1,0 +1,59 @@
+---
+title: Early testers
+description: How controlled preview access is selected, used, and expired.
+---
+
+# Early Tester Program
+
+llmfaucet is opening in small groups while we test routing, coding-agent
+compatibility, fair-use limits, and provider reliability. We select testers to
+cover different tools, operating systems, regions, and real workflows.
+
+## What testers receive
+
+- Controlled preview access at `https://api.llmfaucet-preview.dev/v1`
+- A personal, time-limited preview key
+- Setup guidance for the preferred coding tool
+- Direct feedback channels through GitHub Discussions and Issues
+- A chance to influence compatibility and routing priorities
+
+Sponsorship is not required and does not guarantee selection.
+
+## What we ask
+
+- Test one real, non-production-critical workflow.
+- Report reproducible issues when possible.
+- Include client/version, OS, selector, UTC timestamp, request ID, routed-via
+  header, sanitized error, and reproduction steps.
+- Respect provider terms, fair-use limits, and the preview access period.
+- Never include secrets, credentials, private repositories, or sensitive source
+  code in a report.
+
+## Application process
+
+The [waitlist application](/waitlist) requires GitHub sign-in to reduce spam
+and bind the application to one account. We ask about your tool, use case,
+expected volume, operating systems, and ability to report bugs. Applications
+are reviewed manually; acceptance is not guaranteed.
+
+## Preview limits and expiry
+
+Approved early testers receive 100 requests/day, two concurrent streams, and a
+preview entitlement for 14 days. Capacity, models, routes, and limits can
+change without notice. At expiry, the account downgrades to the registered
+50-requests/day tier instead of breaking the account.
+
+## Safe feedback example
+
+```text
+Client: Aider 0.x
+OS: Linux
+Selector: auto:coding
+Time: 2026-08-24T12:00:00Z
+Request ID: req_redacted
+X-Routed-Via: provider/model
+Result: 429 after two bounded attempts
+Reproduction: one sanitized sentence describing the request shape
+```
+
+Do not paste the prompt, completion, API key, or private repository contents.

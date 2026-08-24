@@ -1,17 +1,32 @@
 name: Deploy
 on:
-  push:
-    branches: [main, dev]
+  workflow_call:
+concurrency:
+  group: llmfaucet-deploy-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: npm }
-      - run: npm ci
-      - run: npm test
-      - run: npm run build
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: corepack enable && pnpm install --frozen-lockfile
+      - run: pnpm test
+      - run: pnpm build
+      - name: Apply D1 migrations
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ "${{ github.ref_name }}" = "main" ]; then
+            pnpm --filter @llmfaucet/worker exec wrangler d1 migrations apply llmfaucet-prod --remote --env production --config wrangler.toml
+          else
+            pnpm --filter @llmfaucet/worker exec wrangler d1 migrations apply llmfaucet-preview --remote --env preview --config wrangler.toml
+          fi
       - uses: cloudflare/wrangler-action@v4
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -20,4 +35,4 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           wranglerVersion: "4.125.0"
-          command: deploy --env ${{ github.ref_name == 'main' && 'production' || 'preview' }}
+          command: deploy --env ${{ github.ref_name == 'main' && 'production' || 'preview' }} --config apps/worker/wrangler.toml

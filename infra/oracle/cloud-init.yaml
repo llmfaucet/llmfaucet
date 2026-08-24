@@ -1,0 +1,10 @@
+#cloud-config
+package_update: true
+packages:
+  - ca-certificates
+  - curl
+  - git
+  - nodejs
+  - npm
+  - ufw
+  - fail2ban

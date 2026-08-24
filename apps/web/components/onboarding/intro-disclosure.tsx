@@ -1,0 +1,3 @@
+'use client';
+import { useState } from 'react';
+export function IntroDisclosure({ id, title, children }: { id: string; title: string; children: React.ReactNode }) { const [visible, setVisible] = useState(() => typeof window !== 'undefined' && window.localStorage.getItem(`llmfaucet:disclosure:${id}`) !== 'hidden'); if (!visible) return null; return <aside className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-5"><p className="font-medium">{title}</p><div className="mt-2 text-sm leading-6 text-muted-foreground">{children}</div><button className="mt-4 text-xs font-medium underline" onClick={() => { window.localStorage.setItem(`llmfaucet:disclosure:${id}`, 'hidden'); setVisible(false); }}>Don’t show again</button></aside>; }

@@ -1,0 +1,5 @@
+# Copy the binding shape from apps/worker/wrangler.toml and supply real IDs
+# through the deployment environment. Never commit production credentials.
+name = "llmfaucet"
+main = "apps/worker/src/index.ts"
+compatibility_date = "2026-08-23"

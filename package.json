@@ -3,18 +3,31 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "bin": { "llmfaucet": "bin/llmfaucet.mjs" },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "build": "tsc --noEmit",
-    "test": "tsx test/gateway.test.ts",
-    "probe": "node scripts/probe.mjs",
-    "typecheck": "tsc --noEmit",
-    "lint": "tsc --noEmit"
+    "dev": "npm --prefix apps/worker run dev",
+    "probe": "npm --prefix apps/probe run probe",
+    "build": "npm --prefix apps/web run build && npm --prefix apps/worker run build && npm --prefix apps/probe run build",
+    "test": "npm --prefix apps/worker run test && npm --prefix apps/web run test && npm --workspace @llmfaucet/types run test && npm --workspace @llmfaucet/config run test && npm --workspace @llmfaucet/sdk run test && npm --workspace @llmfaucet/cli run test",
+    "lint": "npm --prefix apps/worker run lint && npm --prefix apps/web run lint && npm --prefix apps/probe run lint",
+    "typecheck": "npm --prefix apps/worker run typecheck && npm --prefix apps/web run typecheck && npm --prefix apps/probe run typecheck && npm --workspace @llmfaucet/types run typecheck && npm --workspace @llmfaucet/config run typecheck && npm --workspace @llmfaucet/sdk run typecheck && npm --workspace @llmfaucet/cli run typecheck",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "clean": "node internal/scripts/clean.mjs",
+    "third-party:setup": "./internal/third-party/setup.sh",
+    "third-party:update": "./internal/third-party/update.sh",
+    "verify:env": "node internal/scripts/verify-env.mjs",
+    "verify:secrets": "node internal/scripts/verify-no-secrets.mjs",
+    "verify": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run verify:secrets"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260823.1",
     "@types/node": "^22.18.0",
     "tsx": "^4.20.3",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "prettier": "^3.6.2"
   }
 }

@@ -1,0 +1,3 @@
+name = "llmfaucet-preview"
+main = "apps/worker/src/index.ts"
+compatibility_date = "2026-08-23"

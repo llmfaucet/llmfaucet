@@ -1,0 +1,2 @@
+import { CopyButton } from './copy-button';
+export function CodeBlock({ code, language = 'bash' }: { code: string; language?: string }) { return <div className="overflow-hidden rounded-xl border border-border bg-[#111315] text-zinc-200 shadow-sm"><div className="flex items-center justify-between border-b border-white/10 px-4 py-2 text-xs text-zinc-500"><span>{language}</span><CopyButton content={code} /></div><pre className="overflow-x-auto p-4 text-xs leading-6 sm:text-sm"><code>{code}</code></pre></div>; }

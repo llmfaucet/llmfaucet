@@ -1,0 +1,15 @@
+name: Documentation issue
+description: Report unclear or outdated documentation.
+body:
+  - type: input
+    id: page
+    attributes:
+      label: Page or section
+    validations:
+      required: true
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested improvement
+    validations:
+      required: true

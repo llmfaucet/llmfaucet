@@ -1,0 +1,9 @@
+const encoder = new TextEncoder();
+const hex = (bytes: ArrayBuffer | Uint8Array): string => [...new Uint8Array(bytes instanceof ArrayBuffer ? bytes : bytes.buffer, bytes instanceof ArrayBuffer ? 0 : bytes.byteOffset, bytes instanceof ArrayBuffer ? bytes.byteLength : bytes.byteLength)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+export async function sha256(value: string): Promise<string> { return hex(await crypto.subtle.digest('SHA-256', encoder.encode(value))); }
+export async function hmacSha256(secret: string, value: string): Promise<string> { const key = await crypto.subtle.importKey('raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']); return hex(await crypto.subtle.sign('HMAC', key, encoder.encode(value))); }
+export function secureRandomHex(byteLength: number): string { if (!Number.isInteger(byteLength) || byteLength < 1) throw new Error('byteLength must be positive'); return hex(crypto.getRandomValues(new Uint8Array(byteLength))); }
+export function utcDay(date = new Date()): string { return date.toISOString().slice(0, 10); }
+export function nextUtcMidnight(date = new Date()): Date { const next = new Date(date); next.setUTCHours(24, 0, 0, 0); return next; }
+export function constantTimeEqual(a: string, b: string): boolean { const left = encoder.encode(a); const right = encoder.encode(b); let mismatch = left.length ^ right.length; for (let i = 0; i < Math.max(left.length, right.length); i++) mismatch |= (left[i % Math.max(1, left.length)] ?? 0) ^ (right[i % Math.max(1, right.length)] ?? 0); return mismatch === 0; }
+export function parseTimestamp(value: unknown): number { if (typeof value === 'number' && Number.isFinite(value)) return value; if (typeof value !== 'string' || !value) return NaN; const numeric = Number(value); return Number.isFinite(numeric) ? numeric : Date.parse(value); }

@@ -1,0 +1,8 @@
+'use client';
+import { useEffect, useState } from 'react';
+import { api } from '@/lib/api-client';
+import type { UsageResponse } from '@/lib/api-types';
+import { EmptyState, ErrorState, LoadingState } from '@/components/data-states';
+import { UsageMeter } from '@/components/usage-meter';
+export default function UsagePage(){const [data,setData]=useState<UsageResponse|null>(null);const [error,setError]=useState('');useEffect(()=>{api.usage().then(setData).catch((e:Error)=>setError(e.message))},[]);return <div><h1 className="text-3xl font-semibold">Usage</h1><p className="mt-3 text-muted-foreground">Metadata-only analytics. Prompt content is not retained by default.</p>{error?<div className="mt-8"><ErrorState message={error}/></div>:!data?<div className="mt-8"><LoadingState label="Loading usage"/></div>:<><div className="mt-8 rounded-xl border border-border bg-card p-6"><h2 className="font-semibold">Today</h2><div className="mt-5 max-w-xl"><UsageMeter used={data.used} limit={data.limit}/><p className="mt-3 text-xs text-muted-foreground">Reset: {new Date(data.resetAt).toUTCString()}</p></div></div><div className="mt-4 rounded-xl border border-border bg-card p-6"><h2 className="font-semibold">Recent days</h2>{data.days?.length?<div className="mt-5 space-y-3">{data.days.map(day=><div className="flex justify-between border-b border-border pb-3 text-sm" key={day.day}><span>{day.day}</span><strong>{day.requests} requests</strong></div>)}</div>:<div className="mt-5"><EmptyState title="No history yet" body="Historical usage appears once the service provides aggregate usage data."/></div>}</div></>}</div>}
+

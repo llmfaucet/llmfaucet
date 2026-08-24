@@ -1,0 +1,40 @@
+---
+title: GitHub Sponsors
+description: Optional identity and fair-use entitlements.
+---
+
+# GitHub Sponsors
+
+GitHub Sponsors is a funding and entitlement layer, not a marketplace for
+tokens or guaranteed model access. GitHub handles payment; llmfaucet verifies
+the active sponsorship relationship and applies fair-use limits.
+
+## Plans
+
+| Access | Requests/day | Queue priority |
+| --- | ---: | ---: |
+| Anonymous | 20 | 0 |
+| Registered | 50 | 10 |
+| Supporter | 200 | 20 |
+| Pro | 500 | 30 |
+
+Only an active sponsorship of the configured `justinedevs` account qualifies. An
+unrelated sponsorship does not grant benefits. Cancellation downgrades the
+account after the applicable paid period; the existing key is not silently
+broken.
+
+## Verification model
+
+After GitHub OAuth, the service checks sponsorship through GitHub’s documented
+GraphQL API. Webhook updates are signature-verified and idempotent. Entitlement
+changes invalidate cached API-key access. OAuth tokens and webhook secrets are
+never stored in application records.
+
+## What a Sponsor receives
+
+Sponsors receive higher request limits and queue priority when capacity allows.
+They do not receive reserved tokens, a fixed model, unlimited usage, guaranteed
+latency, uptime, or a production SLA.
+
+See [limits](/docs/limits) for enforcement details and [privacy](/docs/privacy)
+for stored identity data.

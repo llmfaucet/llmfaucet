@@ -1,12 +1,22 @@
 node_modules/
+.pnpm-store/
 .wrangler/
 dist/
-.env*
+build/
+.next/
+out/
+.turbo/
+coverage/
+playwright-report/
+test-results/
+.env
+.env.*
 !.env.example
+!.dev.vars.example
+.dev.vars
 .internal/
 .omx/
-docs/.next/
-docs/out/
+*.tsbuildinfo
 
 # Local third-party architecture references
 /internal/third-party/freellmapi/
@@ -14,3 +24,15 @@ docs/out/
 /internal/third-party/ai-horde/
 /internal/third-party/pollinations/
 /internal/third-party/gpt4free/
+
+# Oracle / SSH materials
+*.pem
+*.key
+*.pub
+.oracle/
+
+# Logs and local tooling
+*.log
+logs/
+.DS_Store
+.idea/

@@ -1,0 +1,28 @@
+node_modules
+.next
+out
+dist
+.wrangler
+coverage
+internal/third-party
+
+# Existing product surfaces are preserved during the structural migration;
+# format them in their own focused UI/runtime changes.
+apps/web/app
+apps/web/components
+apps/web/content
+apps/web/hooks
+apps/web/lib
+apps/web/public
+apps/web/test
+apps/web/next-env.d.ts
+apps/web/tsconfig.json
+apps/web/auth-and-limits.md
+apps/worker/src
+apps/worker/test
+apps/worker/worker-configuration.d.ts
+design-system
+.github
+README.md
+NOTICE.md
+pnpm-lock.yaml

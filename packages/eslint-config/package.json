@@ -1,0 +1,17 @@
+{
+  "name": "@llmfaucet/eslint-config",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./base.js",
+    "./react": "./react.js",
+    "./worker": "./worker.js"
+  },
+  "scripts": {
+    "build": "node --check base.js",
+    "typecheck": "node --check base.js",
+    "lint": "node --check base.js",
+    "test": "node --check base.js"
+  }
+}

@@ -1,0 +1,10 @@
+name: Bug report
+description: Report a reproducible llmfaucet issue.
+body:
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Include sanitized steps and request metadata only.
+    validations:
+      required: true

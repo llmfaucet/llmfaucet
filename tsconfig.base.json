@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ES2022",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@llmfaucet/types": ["packages/types/src/index.ts"],
+      "@llmfaucet/config": ["packages/config/src/index.ts"],
+      "@llmfaucet/sdk": ["packages/sdk/src/index.ts"]
+    }
+  }
+}

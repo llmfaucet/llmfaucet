@@ -1,0 +1,72 @@
+---
+title: Limits and fair use
+description: Request budgets, concurrency controls, and retry behavior.
+---
+
+# Limits and fair use
+
+llmfaucet is a shared gateway. Limits protect the public service and make
+capacity available to more developers.
+
+## Plan limits
+
+| Access | Requests/day | Short window | Concurrent streams | Priority |
+| --- | ---: | ---: | ---: | --- |
+| Anonymous | 20 | 30/min | 1 | Standard |
+| Registered | 50 | 60/min | 2 | Standard |
+| Early tester | 100 | 60/min | 2 | Preview |
+| Supporter | 200 | 90/min | 3 | Priority |
+| Pro | 500 | 120/min | 5 | High |
+
+Daily limits reset at midnight UTC. A personal key changes the access tier; it
+does not create a dedicated provider or reserve tokens.
+
+## Request ceilings
+
+`max_tokens` is plan-specific. Anonymous requests are capped at 1,024 tokens;
+registered requests at 2,048; Supporter and Pro requests at 4,096. Request
+bodies are bounded before provider routing.
+
+## Rate-limit headers
+
+Successful API responses include:
+
+```text
+X-RateLimit-Limit: 20
+X-RateLimit-Remaining: 19
+X-RateLimit-Reset: 2026-08-25T00:00:00.000Z
+X-LLMFaucet-Plan: anonymous
+```
+
+When a limit is reached, the gateway returns an OpenAI-shaped error:
+
+```json
+{
+  "error": {
+    "message": "Daily request limit reached.",
+    "type": "rate_limit_error",
+    "param": null,
+    "code": "daily_limit_exceeded"
+  }
+}
+```
+
+Honor `Retry-After`. Do not retry immediately or create parallel streams to
+work around a limit.
+
+## Routing and failover
+
+The router reads a precomputed catalog, filters by capability and health, then
+uses a bounded fallback chain. A failed upstream can be cooled down for a
+short period. Failover does not cross vision, tools, JSON, embeddings-family,
+or other incompatible capability boundaries.
+
+## Fair-use rules
+
+Do not automate account creation, rotate identities, bypass provider limits,
+scrape protected services, resell access, or use the gateway for production-
+critical workloads. We may rate-limit, suspend, or revoke access when traffic
+threatens shared capacity or violates provider terms.
+
+Free-provider availability changes without notice. No plan guarantees a model,
+token quantity, latency, uptime, output quality, or production SLA.

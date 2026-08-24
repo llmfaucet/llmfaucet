@@ -1,0 +1,27 @@
+import { PLAN_LIMITS, type Plan } from '../config';
+export interface QuotaRequest { action: 'consume' | 'acquire' | 'release' | 'usage' | 'renew' | 'reset' | 'waitlist'; limit?: number; edgeLimit?: number; plan?: Plan; streams?: number; now?: number; leaseId?: string; }
+export interface QuotaDecision { allowed: boolean; limit: number; remaining: number; resetAt: string; retryAfterSeconds: number; code?: string; leaseId?: string; used?: number; }
+const nextReset = (now: number): number => { const date = new Date(now); return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + 1); };
+type StoredQuota = { count: number; resetMs: number; streams: Record<string, number>; windowCount: number; windowStart: number; waitlistCount?: number; waitlistWindowStart?: number };
+export class QuotaLimiter implements DurableObject {
+  constructor(private readonly state: DurableObjectState) {}
+  async fetch(request: Request): Promise<Response> {
+    const execute = async () => {
+      const input = await request.json<QuotaRequest>(); const now = input.now ?? Date.now(); const plan = PLAN_LIMITS[input.plan ?? 'anonymous'] ?? PLAN_LIMITS.anonymous; const limit = input.limit ?? plan.daily;
+      const current = await this.state.storage.get<StoredQuota>('quota'); const active: StoredQuota = !current || current.resetMs <= now ? { count: 0, resetMs: nextReset(now), streams: {}, windowCount: 0, windowStart: now, waitlistCount: 0, waitlistWindowStart: now } : { ...current, windowCount: current.windowCount ?? 0, windowStart: current.windowStart ?? now, waitlistCount: current.waitlistCount ?? 0, waitlistWindowStart: current.waitlistWindowStart ?? now };
+      if (active.windowStart + 60000 <= now) { active.windowStart = now; active.windowCount = 0; } for (const [lease, expiry] of Object.entries(active.streams)) if (expiry <= now) delete active.streams[lease];
+      const base = { limit, remaining: Math.max(0, limit - active.count), resetAt: new Date(active.resetMs).toISOString(), retryAfterSeconds: 0 };
+      if (input.action === 'reset') { await this.state.storage.delete('quota'); return Response.json({ allowed: true, limit, remaining: limit, resetAt: new Date(nextReset(now)).toISOString(), retryAfterSeconds: 0 }); }
+      if (input.action === 'waitlist') { if ((active.waitlistWindowStart ?? now) + 3600000 <= now) { active.waitlistWindowStart = now; active.waitlistCount = 0; } if ((active.waitlistCount ?? 0) >= 3) return Response.json({ allowed: false, limit: 3, remaining: 0, resetAt: new Date((active.waitlistWindowStart ?? now) + 3600000).toISOString(), retryAfterSeconds: 3600, code: 'waitlist_rate_limit_exceeded' } satisfies QuotaDecision, { status: 429 }); active.waitlistCount = (active.waitlistCount ?? 0) + 1; await this.state.storage.put('quota', active); return Response.json({ allowed: true, limit: 3, remaining: 3 - active.waitlistCount, resetAt: new Date((active.waitlistWindowStart ?? now) + 3600000).toISOString(), retryAfterSeconds: 0 } satisfies QuotaDecision); }
+      if (input.action === 'usage') return Response.json({ allowed: true, used: active.count, ...base });
+      if (input.action === 'renew') { if (!input.leaseId || !active.streams[input.leaseId]) return Response.json({ allowed: false, ...base, retryAfterSeconds: 5, code: 'lease_not_found' } satisfies QuotaDecision, { status: 409 }); active.streams[input.leaseId] = now + 120000; await this.state.storage.put('quota', active); return Response.json({ allowed: true, ...base }); }
+      if (input.action === 'release') { if (input.leaseId) delete active.streams[input.leaseId]; await this.state.storage.put('quota', active); return Response.json({ allowed: true, ...base }); }
+      if (input.action === 'acquire') { const cap = input.streams ?? plan.streams; if (Object.keys(active.streams).length >= cap) return Response.json({ allowed: false, ...base, retryAfterSeconds: 5, code: 'concurrency_limit_exceeded' } satisfies QuotaDecision, { status: 429 }); if (input.edgeLimit && active.windowCount >= input.edgeLimit) return Response.json({ allowed: false, ...base, retryAfterSeconds: 60, code: 'rate_limit_exceeded' } satisfies QuotaDecision, { status: 429 }); if (active.count >= limit) return Response.json({ allowed: false, limit, remaining: 0, resetAt: base.resetAt, retryAfterSeconds: Math.max(1, Math.ceil((active.resetMs - now) / 1000)), code: 'daily_limit_exceeded' } satisfies QuotaDecision, { status: 429 }); const leaseId = input.leaseId ?? crypto.randomUUID(); active.streams[leaseId] = now + 120000; active.count++; active.windowCount++; }
+      if (input.action === 'consume') { if (active.count >= limit) return Response.json({ allowed: false, limit, remaining: 0, resetAt: base.resetAt, retryAfterSeconds: Math.max(1, Math.ceil((active.resetMs - now) / 1000)), code: 'daily_limit_exceeded' } satisfies QuotaDecision, { status: 429 }); if (input.edgeLimit && active.windowCount >= input.edgeLimit) return Response.json({ allowed: false, ...base, retryAfterSeconds: 60, code: 'rate_limit_exceeded' } satisfies QuotaDecision, { status: 429 }); active.count++; active.windowCount++; }
+      await this.state.storage.put('quota', active); return Response.json({ allowed: true, ...base, remaining: Math.max(0, limit - active.count), leaseId: input.action === 'acquire' ? input.leaseId : undefined });
+    };
+    const block = this.state.blockConcurrencyWhile;
+    if (!block) throw new Error('quota_serialization_unavailable');
+    return block.call(this.state, execute) as Promise<Response>;
+  }
+}

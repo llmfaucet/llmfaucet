@@ -1,0 +1,22 @@
+{
+  "name": "@llmfaucet/cli",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "llmfaucet": "src/index.mjs"
+  },
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "node --check src/index.mjs",
+    "typecheck": "node --check src/index.mjs",
+    "lint": "node --check src/index.mjs",
+    "test": "node --check src/index.mjs"
+  },
+  "dependencies": {}
+}

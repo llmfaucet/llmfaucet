@@ -1,13 +1,10 @@
 {
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "ES2022",
-    "moduleResolution": "Bundler",
-    "strict": true,
-    "noEmit": true,
-    "lib": ["ES2022", "DOM"],
-    "types": ["@cloudflare/workers-types", "node"],
-    "skipLibCheck": true
-  },
-  "include": ["src", "test"]
+  "extends": "./tsconfig.base.json",
+  "files": [],
+  "references": [
+    { "path": "./apps/worker" },
+    { "path": "./packages/types" },
+    { "path": "./packages/config" },
+    { "path": "./packages/sdk" }
+  ]
 }

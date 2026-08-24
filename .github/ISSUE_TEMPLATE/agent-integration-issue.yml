@@ -1,0 +1,15 @@
+name: Agent integration issue
+description: Report a coding-agent compatibility issue.
+body:
+  - type: input
+    id: client
+    attributes:
+      label: Client and version
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+    validations:
+      required: true

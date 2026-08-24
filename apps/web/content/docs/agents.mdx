@@ -1,0 +1,93 @@
+---
+title: Coding agents
+description: Configure coding tools with a compatible endpoint and fair-use key.
+---
+
+# Coding agents
+
+Use the same API base URL for every client:
+
+```text
+https://api.llmfaucet.dev/v1
+```
+
+Use `free` for anonymous testing or a personal `llmfaucet_...` key from the
+dashboard. Use `auto:coding` when the request is code-focused.
+
+## Cline and Roo Code
+
+```text
+Provider: OpenAI Compatible
+Base URL: https://api.llmfaucet.dev/v1
+API key: free or llmfaucet_...
+Model: auto:coding
+```
+
+Keep the base URL ending in `/v1`. Do not paste a key into a public issue,
+screen recording, or repository.
+
+## Aider
+
+```bash
+aider \
+  --openai-api-base https://api.llmfaucet.dev/v1 \
+  --openai-api-key free \
+  --model openai/auto:coding
+```
+
+For a personal key, set `--openai-api-key` from an environment variable rather
+than placing the value in shell history.
+
+## Claude Code
+
+The Worker exposes the Anthropic-compatible messages surface at the API root:
+
+```bash
+export ANTHROPIC_BASE_URL="https://api.llmfaucet.dev"
+export ANTHROPIC_AUTH_TOKEN="free"
+claude
+```
+
+Use `ANTHROPIC_AUTH_TOKEN`; do not configure `ANTHROPIC_API_KEY` for this
+integration.
+
+## Codex CLI
+
+```toml
+[model_providers.llmfaucet]
+name = "llmfaucet"
+base_url = "https://api.llmfaucet.dev/v1"
+env_key = "LLMFAUCET_API_KEY"
+wire_api = "responses"
+query_params = {}
+```
+
+```bash
+export LLMFAUCET_API_KEY=free
+```
+
+The Responses surface is a compatibility shim. Check the preview status page
+before using it for a long-running workflow.
+
+## Continue
+
+```yaml
+models:
+  - name: llmfaucet-coding
+    provider: openai
+    model: auto:coding
+    apiBase: https://api.llmfaucet.dev/v1
+    apiKey: free
+```
+
+## Compatibility notes
+
+- Prefer chat completions for general coding agents.
+- Streaming is SSE and should be handled incrementally.
+- A route can fail over only to a compatible capability class.
+- Read `X-Routed-Via`, `X-Fallback-Attempts`, and rate-limit headers when
+  diagnosing a client issue.
+- Provider names and available models are not fixed; use `GET /v1/models`.
+
+See [limits](/docs/limits) and [early testers](/docs/early-testers) before
+connecting an automated coding loop.
