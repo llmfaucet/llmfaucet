@@ -6,6 +6,12 @@ import { cn } from "@/lib/utils";
 import { ThemeProvider } from '@/components/theme-provider';
 import { ReactLenis } from 'lenis/react';
 
+export const metadata = {
+  title: 'llmfaucet',
+  description: 'One endpoint. Free AI models. No keys, no setup.',
+  icons: { icon: '/assets/Logo.png' },
+};
+
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 

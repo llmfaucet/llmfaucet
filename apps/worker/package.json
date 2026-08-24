@@ -17,6 +17,6 @@
     "@llmfaucet/types": "file:../../packages/types"
   },
   "devDependencies": {
-    "wrangler": "4.86.0"
+    "wrangler": "4.125.0"
   }
 }
