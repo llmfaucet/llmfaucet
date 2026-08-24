@@ -17,7 +17,7 @@ jobs:
           node-version: 22
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
-      - run: corepack enable && pnpm install --frozen-lockfile
+      - run: pnpm install --frozen-lockfile
       - name: Require production API endpoint configuration
         if: github.ref_name == 'main'
         run: test -n "$NEXT_PUBLIC_API_BASE_URL"
