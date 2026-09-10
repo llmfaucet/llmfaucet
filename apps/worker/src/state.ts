@@ -56,8 +56,8 @@ export async function scheduledMaintenance(env: Env): Promise<void> {
       if ((result.meta?.changes ?? 0) < MAINTENANCE_DELETE_BATCH_SIZE) break;
     }
   };
-  await prune('DELETE FROM request_logs WHERE rowid IN (SELECT rowid FROM request_logs WHERE created_at < ? ORDER BY created_at LIMIT 500)', Date.now() - 30 * 86400000);
-  await prune("DELETE FROM provider_health_history WHERE rowid IN (SELECT rowid FROM provider_health_history WHERE checked_at < datetime('now', '-30 days') ORDER BY checked_at LIMIT 500)");
-  await prune("DELETE FROM daily_stats WHERE rowid IN (SELECT rowid FROM daily_stats WHERE day < date('now', '-30 days') ORDER BY day LIMIT 500)");
-  await prune("DELETE FROM provider_daily_stats WHERE rowid IN (SELECT rowid FROM provider_daily_stats WHERE date < date('now', '-30 days') ORDER BY date LIMIT 500)");
+  await prune(`DELETE FROM request_logs WHERE rowid IN (SELECT rowid FROM request_logs WHERE created_at < ? ORDER BY created_at LIMIT ${MAINTENANCE_DELETE_BATCH_SIZE})`, Date.now() - 30 * 86400000);
+  await prune(`DELETE FROM provider_health_history WHERE rowid IN (SELECT rowid FROM provider_health_history WHERE checked_at < datetime('now', '-30 days') ORDER BY checked_at LIMIT ${MAINTENANCE_DELETE_BATCH_SIZE})`);
+  await prune(`DELETE FROM daily_stats WHERE rowid IN (SELECT rowid FROM daily_stats WHERE day < date('now', '-30 days') ORDER BY day LIMIT ${MAINTENANCE_DELETE_BATCH_SIZE})`);
+  await prune(`DELETE FROM provider_daily_stats WHERE rowid IN (SELECT rowid FROM provider_daily_stats WHERE date < date('now', '-30 days') ORDER BY date LIMIT ${MAINTENANCE_DELETE_BATCH_SIZE})`);
 }

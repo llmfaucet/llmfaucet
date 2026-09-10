@@ -33,6 +33,7 @@ const db = {
 await scheduledMaintenance({ DB: db } as any);
 
 assert.equal(queries.filter((query) => query.startsWith('INSERT INTO daily_stats')).length, 1);
+assert.ok(queries.filter((query) => query.startsWith('DELETE FROM request_logs'))[0]?.includes(`LIMIT ${MAINTENANCE_DELETE_BATCH_SIZE}`));
 assert.equal(queries.filter((query) => query.startsWith('DELETE FROM request_logs')).length, MAINTENANCE_DELETE_BATCHES);
 assert.equal(queries.filter((query) => query.startsWith('DELETE FROM provider_health_history')).length, 1);
 assert.equal(queries.filter((query) => query.startsWith('DELETE FROM daily_stats')).length, 1);

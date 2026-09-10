@@ -620,7 +620,7 @@ const handler = {
     return error("Not found", 404);
   },
   async scheduled(controller: ScheduledController, env: Env): Promise<void> {
-    await scheduledMaintenance(env);
+    await withMaintenanceLease(env, 'data-maintenance', () => scheduledMaintenance(env));
     if (controller.cron === '0 0 * * *') {
       await withMaintenanceLease(env, 'provider-catalog', async () => {
         const models = await catalog(env);

@@ -5,6 +5,8 @@ import type { ProviderAdapter } from '../providers/base';
 
 export interface RegisteredProvider extends ProviderRecord { adapter: ProviderAdapter; }
 
+const MODEL_WRITE_BATCH_SIZE = 80;
+
 function publicModelPrefix(provider: string): string {
   return provider === 'opencode-zen' ? 'opencode' : provider === 'ai-horde' ? 'horde' : provider;
 }
@@ -183,21 +185,23 @@ export class ProviderRegistry {
     const models = await provider.adapter.getModels();
     const prefix = publicModelPrefix(provider.name);
     const normalizedModels = models.map((model) => ({ model, modelId: model.id.startsWith(`${provider.name}/`) ? model.id.slice(provider.name.length + 1) : model.id.startsWith(`${prefix}/`) ? model.id.slice(prefix.length + 1) : model.id }));
-    const statements = normalizedModels.map(({ model, modelId }) => {
-      const metadata = JSON.stringify({ capabilities: model.capabilities, quality: model.quality, speed: model.speed, supported_parameters: model.supported_parameters, ...(model.family ? { family: model.family } : {}) });
-      return this.env.DB!.prepare(
-        `INSERT INTO provider_models (id, provider_id, model_id, model_name, model_display_name, context_window, metadata_json, is_deprecated, last_synced_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-         ON CONFLICT(provider_id, model_id) DO UPDATE SET model_name = excluded.model_name, model_display_name = excluded.model_display_name, context_window = excluded.context_window, metadata_json = excluded.metadata_json, is_deprecated = 0, last_synced_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP`,
-      ).bind(`${providerId}:${modelId}`, providerId, modelId, modelId, modelId, model.context, metadata);
-    });
-    if (statements.length > 0) await this.env.DB.batch(statements);
+    const syncMarker = new Date().toISOString().replace('T', ' ').replace('Z', '');
+    for (let offset = 0; offset < normalizedModels.length; offset += MODEL_WRITE_BATCH_SIZE) {
+      const statements = normalizedModels.slice(offset, offset + MODEL_WRITE_BATCH_SIZE).map(({ model, modelId }) => {
+        const metadata = JSON.stringify({ capabilities: model.capabilities, quality: model.quality, speed: model.speed, supported_parameters: model.supported_parameters, ...(model.family ? { family: model.family } : {}) });
+        return this.env.DB!.prepare(
+          `INSERT INTO provider_models (id, provider_id, model_id, model_name, model_display_name, context_window, metadata_json, is_deprecated, last_synced_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, CURRENT_TIMESTAMP)
+           ON CONFLICT(provider_id, model_id) DO UPDATE SET model_name = excluded.model_name, model_display_name = excluded.model_display_name, context_window = excluded.context_window, metadata_json = excluded.metadata_json, is_deprecated = 0, last_synced_at = excluded.last_synced_at, updated_at = CURRENT_TIMESTAMP`,
+        ).bind(`${providerId}:${modelId}`, providerId, modelId, modelId, modelId, model.context, metadata, syncMarker);
+      });
+      if (statements.length > 0) await this.env.DB.batch(statements);
+    }
     if (models.length === 0) {
       await this.env.DB.prepare('UPDATE provider_models SET is_deprecated = 1, updated_at = CURRENT_TIMESTAMP WHERE provider_id = ?').bind(providerId).run();
       return;
     }
-    const placeholders = normalizedModels.map(() => '?').join(', ');
-    await this.env.DB.prepare(`UPDATE provider_models SET is_deprecated = 1, updated_at = CURRENT_TIMESTAMP WHERE provider_id = ? AND model_id NOT IN (${placeholders})`).bind(providerId, ...normalizedModels.map(({ modelId }) => modelId)).run();
+    await this.env.DB.prepare('UPDATE provider_models SET is_deprecated = 1, updated_at = CURRENT_TIMESTAMP WHERE provider_id = ? AND (last_synced_at IS NULL OR last_synced_at < ?)').bind(providerId, syncMarker).run();
   }
 
   async updateHealth(providerId: string, health: ProviderHealth): Promise<void> {
