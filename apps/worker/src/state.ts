@@ -49,4 +49,6 @@ export async function scheduledMaintenance(env: Env): Promise<void> {
   await env.DB.prepare('INSERT INTO daily_stats (day, requests, failures) SELECT date(created_at / 1000, \'unixepoch\'), COUNT(*), SUM(CASE WHEN status >= 500 THEN 1 ELSE 0 END) FROM request_logs WHERE created_at >= ? AND created_at < ? GROUP BY 1 ON CONFLICT(day) DO UPDATE SET requests = excluded.requests, failures = excluded.failures').bind(start.getTime(), start.getTime() + 86400000).run();
   await env.DB.prepare('DELETE FROM request_logs WHERE created_at < ?').bind(Date.now() - 30 * 86400000).run();
   await env.DB.prepare("DELETE FROM provider_health_history WHERE checked_at < datetime('now', '-30 days')").run();
+  await env.DB.prepare("DELETE FROM daily_stats WHERE day < date('now', '-30 days')").run();
+  await env.DB.prepare("DELETE FROM provider_daily_stats WHERE date < date('now', '-30 days')").run();
 }

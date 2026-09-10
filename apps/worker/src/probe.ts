@@ -102,7 +102,9 @@ export async function withMaintenanceLease<T>(env: Env, name: string, task: () =
   if ((claim.meta?.changes ?? 0) !== 1) return undefined;
   const renewal = setInterval(() => {
     const renewed = new Date(Date.now() + 15 * 60 * 1000).toISOString().slice(0, 19).replace('T', ' ');
-    void env.DB?.prepare('UPDATE worker_maintenance_leases SET expires_at = ? WHERE name = ? AND holder = ?').bind(renewed, name, holder).run();
+    void env.DB?.prepare('UPDATE worker_maintenance_leases SET expires_at = ? WHERE name = ? AND holder = ?').bind(renewed, name, holder).run().catch((error) => {
+      console.error(`[maintenance-lease] ${name} renewal failed`, error);
+    });
   }, 2 * 60 * 1000);
   try {
     return await task();

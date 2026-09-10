@@ -26,7 +26,7 @@ try {
   const freshMetrics = await publicMetrics({ ...envValues, BUDGETS: freshKv } as never, { providers: ['pollinations'], models: [{ provider: 'pollinations' }] });
   assert.equal(freshMetrics.healthyUpstreams, 1);
   const staleKv = new MemoryKV();
-  await staleKv.put('health:pollinations', JSON.stringify({ status: 'healthy', checked_at: String(Date.now() - 16 * 60 * 1000) }));
+  await staleKv.put('health:pollinations', JSON.stringify({ status: 'healthy', checked_at: String(Date.now() - 7 * 60 * 60 * 1000) }));
   const staleMetrics = await publicMetrics({ ...envValues, BUDGETS: staleKv } as never, { providers: ['pollinations'], models: [{ provider: 'pollinations' }] });
   assert.equal(staleMetrics.healthyUpstreams, null);
   assert.equal(staleMetrics.status, 'unavailable');
