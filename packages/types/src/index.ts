@@ -36,3 +36,12 @@ export type WaitlistApplicationSummary = Pick<
   WaitlistApplication,
   'id' | 'status' | 'primaryTool' | 'primaryUseCase' | 'createdAt' | 'updatedAt' | 'previewAccessExpiresAt'
 >;
+
+export type {
+  ProviderHealthState,
+  ProviderCapability,
+  ProviderHealth,
+  ProviderRecord,
+  ProviderModel,
+  ProviderRegistrationInput,
+} from './provider';

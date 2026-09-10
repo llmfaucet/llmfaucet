@@ -20,6 +20,8 @@
     "third-party:setup": "./internal/third-party/setup.sh",
     "third-party:update": "./internal/third-party/update.sh",
     "verify:env": "node internal/scripts/verify-env.mjs",
+    "openapi:validate": "bash internal/openapi/generate.sh validate",
+    "openapi:generate": "bash internal/openapi/generate.sh generate",
     "verify:secrets": "node internal/scripts/verify-no-secrets.mjs",
     "verify": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run verify:secrets"
   },

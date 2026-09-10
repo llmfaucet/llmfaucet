@@ -34,6 +34,7 @@ export interface Env {
   GITHUB_PUBLIC_REPOSITORY?: string;
   SDK_NPM_PACKAGE?: string;
   CLI_NPM_PACKAGE?: string;
+  PROVIDER_EGRESS_ALLOWLIST?: string;
 }
 
 export interface Model {
@@ -44,6 +45,8 @@ export interface Model {
   speed: number;
   context: number;
   supported_parameters: string[];
+  provider_priority?: number;
+  provider_weight?: number;
   family?: string;
 }
 

@@ -179,7 +179,7 @@ export function ExpandableScreenContent({
   return (
     <AnimatePresence initial={false}>
       {isExpanded && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-2" data-expandable-screen-content>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background p-3 sm:p-2" data-expandable-screen-content>
           <motion.div
             layoutId={layoutId}
             transition={{ duration: animationDuration }}

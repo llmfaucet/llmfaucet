@@ -1,4 +1,5 @@
 import type { Env, Model, NormalizedRequest, ProviderResult } from './types';
+import type { ProviderAdapter } from './providers/base';
 
 const defaults: Record<string, string> = { pollinations: 'https://text.pollinations.ai/openai', llm7: 'https://api.llm7.io/v1/chat/completions', 'opencode-zen': 'https://opencode.ai/zen/v1/chat/completions', ovh: 'https://oai.endpoints.kepler.ai.cloud.ovh.net/v1/chat/completions', 'ai-horde': 'https://aihorde.net/api/v2/generate/async' };
 const envKeys: Record<string, keyof Env> = { pollinations: 'POLLINATIONS_URL', llm7: 'LLM7_URL', 'opencode-zen': 'OPENCODE_ZEN_URL', ovh: 'OVH_URL', 'ai-horde': 'AI_HORDE_URL' };
@@ -39,16 +40,36 @@ function boundedResponse(response: Response, controller: AbortController, timer:
   return new Response(body, response);
 }
 
-async function fetchBounded(input: RequestInfo | URL, init: RequestInit): Promise<Response> {
+async function fetchBounded(input: RequestInfo | URL, init: RequestInit, timeoutMs = UPSTREAM_TIMEOUT_MS): Promise<Response> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const response = await fetch(input, { ...init, signal: controller.signal });
+    const response = await fetch(input, { ...init, redirect: 'error', signal: controller.signal });
     return boundedResponse(response, controller, timer);
   } catch (cause) {
     clearTimeout(timer);
     throw cause;
   }
+}
+
+export async function callRegisteredProvider(
+  model: Model,
+  req: NormalizedRequest,
+  env: Env,
+  registered?: { adapter: ProviderAdapter } | null,
+): Promise<ProviderResult> {
+  if (registered === null) throw new Error(`${model.provider} provider is unavailable`);
+  if (!registered || model.provider === 'ai-horde') return callProvider(model, req, env);
+
+  const request = await registered.adapter.normalizeRequest(req, model);
+  const response = await fetchBounded(request.url, {
+    method: request.method,
+    headers: request.headers,
+    body: request.body === undefined ? undefined : JSON.stringify(request.body),
+  }, request.timeout);
+  if (!response.ok) throw new Error(`${model.provider} returned ${response.status}`);
+  const normalized = await registered.adapter.normalizeResponse({ response, model, provider: model.provider });
+  return { response: normalized.response, model, provider: model.provider };
 }
 
 export async function callProvider(model: Model, req: NormalizedRequest, env: Env): Promise<ProviderResult> {

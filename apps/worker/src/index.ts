@@ -14,7 +14,7 @@ import {
   responsesStream,
 } from "./formats";
 import { anthropicError, error, responseHeaders } from "./headers";
-import { callProvider } from "./providers";
+import { callRegisteredProvider, callProvider } from "./providers";
 import { capabilityError, selectModel, supportsRequest } from "./router";
 import type { Env, NormalizedRequest } from "./types";
 import {
@@ -36,6 +36,8 @@ import { adminUpdate, adminWaitlist, adminWaitlistDetail, approveWaitlist, creat
 import { githubRepository, publicMetrics } from './lib/public-metrics';
 import { onboardingAction, preferences, updatePreferences } from './preferences';
 import { entitlementFor, planForTier } from './sponsors/entitlements';
+import { ProviderRegistry } from './services/provider-registry';
+import { adminProviders } from './admin-providers';
 export { QuotaLimiter } from './durable/quota-limiter';
 
 const MAX_REQUEST_BYTES = 1_048_576;
@@ -198,8 +200,14 @@ async function run(
     limit = planLimits(env as unknown as Record<string, string | undefined>, access.plan);
     if (normalized.max_tokens && normalized.max_tokens > limit.maxTokens) return wireError(`max_tokens exceeds the ${limit.maxTokens} limit for the ${access.plan} plan.`, 400, { 'x-error-code': 'max_tokens_exceeded' });
   } else return wireError('Strict quota service unavailable.', 503, { 'x-error-code': 'quota_unavailable' });
+  const registry = new ProviderRegistry(env);
+  const dynamicResult = await registry.getAllModelsResult();
+  if (env.DB && !dynamicResult.available) return wireError('Provider registry unavailable.', 503, { 'x-error-code': 'provider_registry_unavailable' });
+  const dynamicModels = dynamicResult.models;
+  const legacyModels = dynamicResult.available && await registry.isProviderEnabled('ai-horde') ? models.filter((item) => item.provider === 'ai-horde') : [];
+  const activeModels = dynamicResult.available && dynamicModels.length > 0 ? [...dynamicModels, ...legacyModels] : models;
   const unhealthy = await unhealthyProviders(env);
-  const model = selectModel(normalized, unhealthy, models);
+  const model = selectModel(normalized, unhealthy, activeModels);
   if (!model)
     return capabilityError(
       normalized.capability,
@@ -225,7 +233,7 @@ async function run(
   const candidates = candidatesFor(
     normalized,
     model,
-    models as typeof MODELS,
+    activeModels,
     unhealthy,
   ).slice(0, PLAN_LIMITS[access.plan].fallbackAttempts);
   let quotaStub: DurableObjectStub | undefined;
@@ -236,7 +244,9 @@ async function run(
     attempts++;
     let result: Awaited<ReturnType<typeof callProvider>>;
     try {
-      result = await callProvider(candidate, normalized, env);
+      const registered = await registry.getProviderByName(candidate.provider);
+      const configured = registered ?? (await registry.hasEnabledProviderName(candidate.provider) ? null : undefined);
+      result = await callRegisteredProvider(candidate, normalized, env, configured);
     } catch {
       void recordRequest(env, { provider: candidate.provider, model: candidate.id, status: 503, latency: Date.now() - started });
       continue;
@@ -305,15 +315,20 @@ async function run(
 
 const handler = {
   async fetch(request: Request, env: Env): Promise<Response> {
-    if (request.method === "OPTIONS")
+    if (request.method === "OPTIONS") {
+      const origin = request.headers.get("origin");
+      const allowed = allowedOrigin(request, env);
       return new Response(null, {
         headers: {
-          ...credentialCors(request, env),
+          "access-control-allow-origin": allowed ?? "*",
+          ...(allowed ? { "access-control-allow-credentials": "true", vary: "Origin" } : {}),
           "access-control-allow-methods": "DELETE,GET,PATCH,POST,OPTIONS",
           "access-control-allow-headers":
             "authorization,content-type,anthropic-version",
+          ...(origin ? { "access-control-max-age": "600" } : {}),
         },
       });
+    }
     const url = new URL(request.url);
     if ((url.pathname.startsWith('/v1/') || url.pathname.startsWith('/api/public/')) && env.EDGE_LIMITER) {
       if (!env.IP_HASH_SECRET && env.ENVIRONMENT !== 'development' && env.ENVIRONMENT !== 'test') return error('Anonymous identity service unavailable.', 503, { 'x-error-code': 'ip_hash_secret_missing' });
@@ -509,6 +524,7 @@ const handler = {
     if (url.pathname === '/api/waitlist/me' && request.method === 'GET') return accountResponse(request, env, await waitlistMe(request, env));
     if (url.pathname === '/api/waitlist/me/key' && request.method === 'POST') { if (!waitlistCsrfAllowed(request, env)) return accountError(request, env, 'Origin validation failed.', 403); return accountResponse(request, env, await createPreviewKey(request, env)); }
     if (url.pathname === '/api/admin/waitlist' && request.method === 'GET') return accountResponse(request, env, await adminWaitlist(request, env));
+    if (url.pathname === '/api/admin/providers' || url.pathname.startsWith('/api/admin/providers/')) return accountResponse(request, env, await adminProviders(request, env, url.pathname));
     const adminDetail = url.pathname.match(/^\/api\/admin\/waitlist\/([^/]+)$/);
     if (adminDetail && request.method === 'GET') return accountResponse(request, env, await adminWaitlistDetail(request, env, adminDetail[1]));
     if (adminDetail && request.method === 'PATCH') { const body = await request.clone().json().catch(() => ({})) as { status?: string }; if (body.status === 'approved' || body.status === 'revoked') return accountError(request, env, 'Use the dedicated approval or revocation action.', 409); return accountResponse(request, env, await adminUpdate(request, env, adminDetail[1])); }
@@ -520,8 +536,8 @@ const handler = {
     if (url.pathname === "/health" || url.pathname === "/status") {
       const providers = models.map((m) => m.provider).filter((p, i, a) => a.indexOf(p) === i);
       const rows = await Promise.all(providers.map(async provider => {
-        const value = await env.BUDGETS.get<{ status?: string; latency?: number; checked_at?: number | string }>(`health:${provider}`, 'json');
-        const checkedMs = parseTimestamp(value?.checked_at);
+        const value = await env.BUDGETS.get<{ status?: string; latency?: number; checked_at?: number | string; checkedAt?: number | string }>(`health:${provider}`, 'json');
+        const checkedMs = parseTimestamp(value?.checked_at ?? value?.checkedAt);
         const fresh = Number.isFinite(checkedMs) && checkedMs <= Date.now() && Date.now() - checkedMs <= 15 * 60 * 1000;
         return { provider, models: models.filter(model => model.provider === provider).length, status: fresh ? value?.status ?? 'unknown' : 'unknown', latencyMs: fresh ? value?.latency ?? null : null, checkedAt: Number.isFinite(checkedMs) ? new Date(checkedMs).toISOString() : null };
       }));

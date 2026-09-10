@@ -1,5 +1,7 @@
 import type { Env, Model } from './types';
 import { MODELS } from './catalog';
+import { ProviderRegistry } from './services/provider-registry';
+import { SUPPORTED_CATALOG_PROVIDERS } from './providers/factory';
 
 const defaults: Record<string, string> = { pollinations: 'https://text.pollinations.ai/openai', llm7: 'https://api.llm7.io/v1/chat/completions', 'opencode-zen': 'https://opencode.ai/zen/v1/chat/completions', ovh: 'https://oai.endpoints.kepler.ai.cloud.ovh.net/v1/chat/completions', 'ai-horde': 'https://aihorde.net/api/v2/status' };
 const keys: Record<string, keyof Env> = { pollinations: 'POLLINATIONS_URL', llm7: 'LLM7_URL', 'opencode-zen': 'OPENCODE_ZEN_URL', ovh: 'OVH_URL', 'ai-horde': 'AI_HORDE_URL' };
@@ -23,17 +25,26 @@ export async function probeProvider(provider: string, env: Env, fetcher: typeof 
 }
 
 export async function probeProviders(env: Env, models: Model[]): Promise<void> {
-  const selected = [...new Set(models.map((m) => m.provider))];
-  await Promise.all(selected.map(async (model) => {
-    const result = await probeProvider(model, env);
-    await env.BUDGETS.put(`health:${model}`, JSON.stringify({ ...result, checked_at: Date.now() }), { expirationTtl: 7200 });
+  const registry = new ProviderRegistry(env);
+  const registered = await registry.getEnabledProviders();
+  const registeredNames = new Set(registered.map((provider) => provider.name));
+  await Promise.all(registered.map(async (provider) => {
+    const health = await provider.adapter.checkHealth();
+    await registry.updateHealth(provider.id, health);
+    await env.BUDGETS.put(`health:${provider.name}`, JSON.stringify({ status: health.status === 'down' ? 'unhealthy' : health.status, latency: health.latencyMs, checked_at: Date.now() }), { expirationTtl: 7200 });
+  }));
+
+  const legacy = [...new Set(models.map((model) => model.provider))].filter((provider) => !registeredNames.has(provider));
+  await Promise.all(legacy.map(async (provider) => {
+    const result = await probeProvider(provider, env);
+    await env.BUDGETS.put(`health:${provider}`, JSON.stringify({ ...result, checked_at: Date.now() }), { expirationTtl: 7200 });
   }));
 }
 
 export async function refreshCatalog(env: Env, models: Model[]): Promise<void> {
   let next = models;
   if (env.CATALOG_URL) {
-    try { const response = await fetch(env.CATALOG_URL, { signal: AbortSignal.timeout(5000) }); const value = await response.json(); if (Array.isArray(value) && value.length > 0 && value.every((m) => MODELS.some((known) => known.provider === m?.provider) && m?.id && m?.provider && Array.isArray(m?.capabilities) && typeof m?.quality === 'number' && typeof m?.speed === 'number' && typeof m?.context === 'number' && Array.isArray(m?.supported_parameters))) next = value as Model[]; } catch { /* retain last known catalog */ }
+    try { const response = await fetch(env.CATALOG_URL, { signal: AbortSignal.timeout(5000) }); const value = await response.json(); if (Array.isArray(value) && value.length > 0 && value.every((m) => SUPPORTED_CATALOG_PROVIDERS.has(m?.provider) && typeof m?.id === 'string' && /^[a-z0-9][a-z0-9_./:-]{1,127}$/i.test(m.id) && Array.isArray(m?.capabilities) && typeof m?.quality === 'number' && Number.isFinite(m.quality) && typeof m?.speed === 'number' && Number.isFinite(m.speed) && typeof m?.context === 'number' && Number.isFinite(m.context) && Array.isArray(m?.supported_parameters))) next = value as Model[]; } catch { /* retain last known catalog */ }
   }
   await env.BUDGETS.put('catalog:active', JSON.stringify(next), { expirationTtl: 7200 });
 }

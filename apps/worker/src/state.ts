@@ -1,24 +1,40 @@
 import { MODELS } from './catalog';
 import type { Env, Model } from './types';
 import { parseTimestamp } from './lib/crypto';
+import { ProviderRegistry } from './services/provider-registry';
+import { SUPPORTED_CATALOG_PROVIDERS } from './providers/factory';
 
-const knownProviders = new Set(MODELS.map((model) => model.provider));
-const valid = (value: unknown): value is Model[] => Array.isArray(value) && value.length > 0 && value.every((model) => model && typeof model.id === 'string' && typeof model.provider === 'string' && knownProviders.has(model.provider) && Array.isArray(model.capabilities) && typeof model.quality === 'number' && typeof model.speed === 'number' && typeof model.context === 'number' && Array.isArray(model.supported_parameters));
+const valid = (value: unknown): value is Model[] => Array.isArray(value) && value.length > 0 && value.every((model) => model && typeof model.id === 'string' && typeof model.provider === 'string' && SUPPORTED_CATALOG_PROVIDERS.has(model.provider) && /^[a-z0-9][a-z0-9_-]{1,63}$/.test(model.provider) && Array.isArray(model.capabilities) && model.capabilities.every((capability: unknown) => typeof capability === 'string') && typeof model.quality === 'number' && Number.isFinite(model.quality) && typeof model.speed === 'number' && Number.isFinite(model.speed) && typeof model.context === 'number' && Number.isFinite(model.context) && Array.isArray(model.supported_parameters) && model.supported_parameters.every((parameter: unknown) => typeof parameter === 'string'));
 
 export async function catalog(env: Env): Promise<Model[]> {
   const raw = await env.BUDGETS.get('catalog:active', 'json');
-  return valid(raw) ? raw : MODELS;
+  const fallback = valid(raw) ? raw : MODELS;
+  if (!env.DB) return fallback;
+  const registry = new ProviderRegistry(env);
+  const dynamic = await registry.getAllModelsResult();
+  if (!dynamic.available) throw new Error('provider_registry_unavailable');
+  const legacy = (await registry.isProviderEnabled('ai-horde')) ? MODELS.filter((model) => model.provider === 'ai-horde') : [];
+  // An initialized registry can legitimately have no fresh model rows during
+  // migration or a failed refresh. Preserve the known-good checked-in routes
+  // until a usable dynamic catalog exists.
+  return dynamic.models.length > 0 ? [...dynamic.models, ...legacy] : [...fallback, ...legacy.filter((model) => !fallback.some((item) => item.id === model.id))];
+}
+
+export function mergeModels(base: Model[], dynamic: Model[]): Model[] {
+  const merged = new Map(base.map((model) => [model.id, model]));
+  for (const model of dynamic) merged.set(model.id, model);
+  return [...merged.values()];
 }
 
 export async function unhealthyProviders(env: Env): Promise<Set<string>> {
   const active = await catalog(env);
-  const providers = [...new Set([...MODELS, ...active].map((model) => model.provider))];
+  const providers = [...new Set(active.map((model) => model.provider))];
   const statuses = await Promise.all(providers.map(async (provider) => [provider, await env.BUDGETS.get(`health:${provider}`, 'json')] as const));
   const now = Date.now();
   return new Set(statuses.filter(([, value]) => {
-    const record = value as { status?: string; checked_at?: number | string } | null;
-    const checkedAt = parseTimestamp(record?.checked_at);
-    return record?.status === 'unhealthy' && Number.isFinite(checkedAt) && checkedAt <= now && now - checkedAt <= 15 * 60 * 1000;
+    const record = value as { status?: string; checked_at?: number | string; checkedAt?: number | string } | null;
+    const checkedAt = parseTimestamp(record?.checked_at ?? record?.checkedAt);
+    return record?.status !== 'healthy' && Number.isFinite(checkedAt) && checkedAt <= now && now - checkedAt <= 15 * 60 * 1000;
   }).map(([provider]) => provider));
 }
 

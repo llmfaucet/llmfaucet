@@ -180,7 +180,18 @@ function debounce<T extends (...args: any[]) => any>(
 
 // Add this helper function
 function isVimeoUrl(url: string): boolean {
-  return url.includes("player.vimeo.com/video/") || url.includes("vimeo.com/")
+  try {
+    const parsed = new URL(url, "https://llmfaucet.invalid")
+    const hostname = parsed.hostname.toLowerCase()
+    const isVimeoHost =
+      hostname === "vimeo.com" ||
+      hostname === "www.vimeo.com" ||
+      hostname === "player.vimeo.com"
+
+    return isVimeoHost && parsed.pathname.includes("/video/")
+  } catch {
+    return false
+  }
 }
 
 // Add this helper function

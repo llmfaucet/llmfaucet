@@ -5,6 +5,11 @@ dist
 .wrangler
 coverage
 internal/third-party
+openapi/generated
+internal/Task(1).md
+internal/Task(2).md
+apps/web/assets/svgs/isometric-box-01.tsx
+apps/web/assets/svgs/isometric-boxes-02.tsx
 
 # Existing product surfaces are preserved during the structural migration;
 # format them in their own focused UI/runtime changes.
