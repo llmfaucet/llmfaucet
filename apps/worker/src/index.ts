@@ -622,7 +622,8 @@ const handler = {
   async scheduled(controller: ScheduledController, env: Env): Promise<void> {
     const models = await catalog(env);
     await scheduledMaintenance(env);
-    await probeProviders(env, models);
+    const cursorKey = `provider:probe:cursor:${controller.cron.replace(/[^a-z0-9]+/gi, '-')}`;
+    await probeProviders(env, models, cursorKey);
     if (controller.cron === '0 0 * * *') {
       await refreshProviderModels(env);
       await refreshCatalog(env, models);

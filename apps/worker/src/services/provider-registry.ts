@@ -83,6 +83,23 @@ export class ProviderRegistry {
     return providers;
   }
 
+  async getEnabledProviderBatch(limit: number, offset = 0): Promise<{ providers: RegisteredProvider[]; nextOffset: number; hasMore: boolean }> {
+    const safeLimit = Math.max(1, Math.floor(limit));
+    const rows = await this.rows<Record<string, unknown>>(
+      `SELECT * FROM providers WHERE is_enabled = 1 AND adapter_type != 'ai-horde' ORDER BY priority DESC, weight DESC, name ASC LIMIT ${safeLimit + 1} OFFSET ${Math.max(0, Math.floor(offset))}`,
+    );
+    const page = rows.slice(0, safeLimit);
+    const providers: RegisteredProvider[] = [];
+    for (const row of page) {
+      const id = String(row.id);
+      const cached = healthFrom(await this.env.BUDGETS.get(`provider:health:${id}`)) ?? healthFrom(await this.env.BUDGETS.get(`health:${id}`));
+      const provider = record(row, cached);
+      const adapter = createProviderAdapter(this.env, provider);
+      if (adapter) providers.push({ ...provider, adapter });
+    }
+    return { providers, nextOffset: page.length < safeLimit ? 0 : Math.max(0, Math.floor(offset)) + page.length, hasMore: rows.length > safeLimit };
+  }
+
   async getProvider(id: string): Promise<RegisteredProvider | null> {
     const rows = await this.rows<Record<string, unknown>>('SELECT * FROM providers WHERE id = ? LIMIT 1', id);
     if (!rows[0]) return null;
@@ -108,7 +125,7 @@ export class ProviderRegistry {
     const rows = await this.rows<Record<string, unknown>>(
       `SELECT pm.*, p.name AS provider_name, p.supports_chat, p.supports_embeddings, p.supports_streaming, p.priority AS provider_priority, p.weight AS provider_weight
        FROM provider_models pm JOIN providers p ON p.id = pm.provider_id
-       WHERE pm.provider_id = ? AND pm.is_enabled = 1 AND pm.is_deprecated = 0 AND COALESCE(pm.last_synced_at, pm.created_at) >= datetime('now', '-7 days') ORDER BY pm.model_name`, providerId,
+       WHERE pm.provider_id = ? AND pm.is_enabled = 1 AND pm.is_deprecated = 0 ORDER BY pm.model_name`, providerId,
     );
     return rows.map((row) => this.model(row, providerId, String(row.provider_name ?? providerId)));
   }
@@ -123,7 +140,7 @@ export class ProviderRegistry {
       const result = await this.env.DB.prepare(
        `SELECT pm.*, p.name AS provider_name, p.supports_chat, p.supports_embeddings, p.supports_streaming, p.priority AS provider_priority, p.weight AS provider_weight
        FROM provider_models pm JOIN providers p ON p.id = pm.provider_id
-       WHERE pm.is_enabled = 1 AND pm.is_deprecated = 0 AND p.is_enabled = 1 AND p.adapter_type != 'ai-horde' AND COALESCE(pm.last_synced_at, pm.created_at) >= datetime('now', '-7 days')
+       WHERE pm.is_enabled = 1 AND pm.is_deprecated = 0 AND p.is_enabled = 1 AND p.adapter_type != 'ai-horde'
        ORDER BY p.priority DESC, p.weight DESC, pm.model_name`,
       ).bind().all<Record<string, unknown>>();
       const models = result.results.map((row) => this.model(row, String(row.provider_id), String(row.provider_name ?? row.provider_id)));
