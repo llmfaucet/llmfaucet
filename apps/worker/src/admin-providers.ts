@@ -2,6 +2,7 @@ import type { Env } from './types';
 import { adminSession, waitlistCsrfAllowed } from './waitlist';
 import { ProviderRegistry } from './services/provider-registry';
 import { isProviderSecretRef, isProviderURLAllowed } from './providers/base';
+import { refreshProviderModelsForProvider } from './probe';
 
 const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), {
   status,
@@ -100,7 +101,10 @@ async function handleAdminProviders(request: Request, env: Env, pathname: string
   if (request.method === 'POST' && (action === 'refresh' || action === 'health')) {
     const provider = await registry.getProvider(id); if (!provider) return error('Provider not found.', 404);
     if (action === 'refresh') {
-      try { await registry.refreshModels(id); return json({ success: true, models: (await registry.getModels(id)).length }); }
+      try {
+        if (!await refreshProviderModelsForProvider(env, id, registry)) return error('Provider model refresh is already running.', 409);
+        return json({ success: true, models: (await registry.getModels(id)).length });
+      }
       catch (cause) { return error(cause instanceof Error ? cause.message : 'Model refresh failed.', 502); }
     }
     const health = await provider.adapter.checkHealth(); await registry.updateHealth(id, health); return json({ health });

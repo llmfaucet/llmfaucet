@@ -79,7 +79,9 @@ export async function refreshProviderModels(env: Env): Promise<void> {
     const batch = await registry.getEnabledProviderBatch(PROVIDER_BATCH_SIZE, cursor.startsWith('k1:') ? cursor.slice(3) : '');
     let failed = false;
     await mapWithConcurrency(batch.providers, PROBE_CONCURRENCY, async (provider) => {
-      try { await registry.refreshModels(provider.id); }
+      try {
+        if (!await refreshProviderModelsForProvider(env, provider.id, registry)) failed = true;
+      }
       catch (error) { failed = true; console.error(`[provider-catalog] ${provider.name} failed`, error); }
     });
     if (failed) return;
@@ -87,6 +89,14 @@ export async function refreshProviderModels(env: Env): Promise<void> {
     await env.BUDGETS.put(CATALOG_CURSOR_KEY, cursor, { expirationTtl: 604800 });
     if (!batch.hasMore) return;
   }
+}
+
+export async function refreshProviderModelsForProvider(env: Env, providerId: string, registry = new ProviderRegistry(env)): Promise<boolean> {
+  const result = await withMaintenanceLease(env, `provider-catalog:${providerId}`, async () => {
+    await registry.refreshModels(providerId);
+    return true;
+  });
+  return result === true;
 }
 
 export async function withMaintenanceLease<T>(env: Env, name: string, task: () => Promise<T>): Promise<T | undefined> {
