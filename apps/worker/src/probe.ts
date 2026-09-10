@@ -25,9 +25,9 @@ async function mapWithConcurrency<T>(items: T[], concurrency: number, task: (ite
 async function providerBatch(env: Env, cursorKey: string): Promise<{ providers: RegisteredProvider[]; nextCursor: string }> {
   const registry = new ProviderRegistry(env);
   const cursor = (await env.BUDGETS.get(cursorKey)) ?? '';
-  const afterName = /^\d+$/.test(cursor) ? '' : cursor;
+  const afterName = cursor.startsWith('k1:') ? cursor.slice(3) : '';
   const batch = await registry.getEnabledProviderBatch(PROVIDER_BATCH_SIZE, afterName);
-  return { providers: batch.providers, nextCursor: batch.hasMore ? batch.nextCursor : '' };
+  return { providers: batch.providers, nextCursor: batch.hasMore ? `k1:${batch.nextCursor}` : '' };
 }
 
 function probeUrl(provider: string, env: Env): string {
@@ -74,24 +74,25 @@ export async function probeProviders(env: Env, models: Model[], cursorKey = HEAL
 
 export async function refreshProviderModels(env: Env): Promise<void> {
   const registry = new ProviderRegistry(env);
-  const batch = await providerBatch(env, CATALOG_CURSOR_KEY);
-  const providers = batch.providers;
-  let failed = false;
-  await mapWithConcurrency(providers, PROBE_CONCURRENCY, async (provider) => {
-    try {
-      await registry.refreshModels(provider.id);
-    } catch (error) {
-      failed = true;
-      console.error(`[provider-catalog] ${provider.name} failed`, error);
-    }
-  });
-  if (!failed) await env.BUDGETS.put(CATALOG_CURSOR_KEY, String(batch.nextCursor), { expirationTtl: 604800 });
+  let cursor = (await env.BUDGETS.get(CATALOG_CURSOR_KEY)) ?? '';
+  for (let page = 0; page < 8; page += 1) {
+    const batch = await registry.getEnabledProviderBatch(PROVIDER_BATCH_SIZE, cursor.startsWith('k1:') ? cursor.slice(3) : '');
+    let failed = false;
+    await mapWithConcurrency(batch.providers, PROBE_CONCURRENCY, async (provider) => {
+      try { await registry.refreshModels(provider.id); }
+      catch (error) { failed = true; console.error(`[provider-catalog] ${provider.name} failed`, error); }
+    });
+    if (failed) return;
+    cursor = batch.hasMore ? `k1:${batch.nextCursor}` : '';
+    await env.BUDGETS.put(CATALOG_CURSOR_KEY, cursor, { expirationTtl: 604800 });
+    if (!batch.hasMore) return;
+  }
 }
 
 export async function withMaintenanceLease<T>(env: Env, name: string, task: () => Promise<T>): Promise<T | undefined> {
   if (!env.DB) return task();
   const holder = crypto.randomUUID();
-  const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString().slice(0, 19).replace('T', ' ');
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString().slice(0, 19).replace('T', ' ');
   const claim = await env.DB.prepare(
     `INSERT INTO worker_maintenance_leases (name, holder, expires_at)
      VALUES (?, ?, ?)
@@ -99,9 +100,14 @@ export async function withMaintenanceLease<T>(env: Env, name: string, task: () =
      WHERE worker_maintenance_leases.expires_at <= CURRENT_TIMESTAMP`,
   ).bind(name, holder, expiresAt).run();
   if ((claim.meta?.changes ?? 0) !== 1) return undefined;
+  const renewal = setInterval(() => {
+    const renewed = new Date(Date.now() + 15 * 60 * 1000).toISOString().slice(0, 19).replace('T', ' ');
+    void env.DB?.prepare('UPDATE worker_maintenance_leases SET expires_at = ? WHERE name = ? AND holder = ?').bind(renewed, name, holder).run();
+  }, 2 * 60 * 1000);
   try {
     return await task();
   } finally {
+    clearInterval(renewal);
     await env.DB.prepare('DELETE FROM worker_maintenance_leases WHERE name = ? AND holder = ?').bind(name, holder).run();
   }
 }

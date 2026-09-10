@@ -538,7 +538,7 @@ const handler = {
       const rows = await Promise.all(providers.map(async provider => {
         const value = await env.BUDGETS.get<{ status?: string; latency?: number; checked_at?: number | string; checkedAt?: number | string }>(`health:${provider}`, 'json');
         const checkedMs = parseTimestamp(value?.checked_at ?? value?.checkedAt);
-        const fresh = Number.isFinite(checkedMs) && checkedMs <= Date.now() && Date.now() - checkedMs <= 15 * 60 * 1000;
+        const fresh = Number.isFinite(checkedMs) && checkedMs <= Date.now() && Date.now() - checkedMs <= 6 * 60 * 60 * 1000;
         return { provider, models: models.filter(model => model.provider === provider).length, status: fresh ? value?.status ?? 'unknown' : 'unknown', latencyMs: fresh ? value?.latency ?? null : null, checkedAt: Number.isFinite(checkedMs) ? new Date(checkedMs).toISOString() : null };
       }));
       const known = rows.filter(row => row.status === 'healthy' || row.status === 'degraded');
