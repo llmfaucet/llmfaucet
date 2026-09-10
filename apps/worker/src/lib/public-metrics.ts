@@ -48,8 +48,8 @@ export async function publicMetrics(env: Env, status: { providers?: string[]; mo
     const health = await Promise.all((status.providers ?? []).map(async provider => env.BUDGETS.get<{ status?: string; checked_at?: number | string }>(`health:${provider}`, 'json')));
     const healthTimes = health.map(healthTimestamp).filter(Number.isFinite);
     const healthUpdatedAt = healthTimes.length ? new Date(Math.max(...healthTimes)).toISOString() : null;
-    const healthStale = (healthTimes.length !== (status.providers ?? []).length) || healthTimes.some(value => value > Date.now() || Date.now() - value > 15 * 60 * 1000);
-    const freshHealth = health.map(value => { const timestamp = healthTimestamp(value); return Number.isFinite(timestamp) && timestamp <= Date.now() && Date.now() - timestamp <= 15 * 60 * 1000 ? value : undefined; });
+  const healthStale = (healthTimes.length !== (status.providers ?? []).length) || healthTimes.some(value => value > Date.now() || Date.now() - value > 6 * 60 * 60 * 1000);
+  const freshHealth = health.map(value => { const timestamp = healthTimestamp(value); return Number.isFinite(timestamp) && timestamp <= Date.now() && Date.now() - timestamp <= 6 * 60 * 60 * 1000 ? value : undefined; });
     const healthyUpstreams = status.providers && freshHealth.some(value => value?.status === 'healthy' || value?.status === 'degraded') ? freshHealth.filter(value => value?.status === 'healthy').length : null;
     const knownHealth = freshHealth.filter(value => value?.status === 'healthy' || value?.status === 'degraded').length;
     const availableModelRoutes = Array.isArray(status.models) && knownHealth > 0 ? status.models.filter(model => { const index = (status.providers ?? []).indexOf(model.provider); const healthStatus = index >= 0 ? freshHealth[index]?.status : undefined; return healthStatus === 'healthy' || healthStatus === 'degraded'; }).length : null;

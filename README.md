@@ -293,7 +293,7 @@ llmfaucet stays lightweight by acting as a routing layer instead of running expe
 | Cloudflare D1 | Catalog history, aggregate statistics, and operational records |
 | Cloudflare Queues | Fair waiting room when free sources are saturated |
 | Cloudflare Pages | Documentation, landing page, setup guides, and public status site |
-| Oracle Cloud Always Free | Scheduled upstream probes, model health checks, and catalog updates |
+| Cloudflare Cron | Scheduled upstream probes, model health checks, and catalog updates |
 
 ```text
 Coding agent or application

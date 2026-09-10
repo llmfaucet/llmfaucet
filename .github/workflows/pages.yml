@@ -18,6 +18,13 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
+      - name: Require Pages endpoint variables
+        run: |
+          test -n "$NEXT_PUBLIC_API_BASE_URL"
+          test -n "$NEXT_PUBLIC_PREVIEW_API_BASE_URL"
+        env:
+          NEXT_PUBLIC_API_BASE_URL: ${{ vars.NEXT_PUBLIC_API_BASE_URL }}
+          NEXT_PUBLIC_PREVIEW_API_BASE_URL: ${{ vars.NEXT_PUBLIC_PREVIEW_API_BASE_URL }}
       - name: Require production API endpoint configuration
         if: github.ref_name == 'main'
         run: test -n "$NEXT_PUBLIC_API_BASE_URL"

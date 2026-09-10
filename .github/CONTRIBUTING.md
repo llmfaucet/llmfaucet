@@ -1,4 +1,4 @@
 # Contributing
 
-Read the root `CONTRIBUTING.md` first. Keep Worker, web, probe, and package
+Read the root `CONTRIBUTING.md` first. Keep Worker, web, and package
 boundaries intact; run `npm run verify` before opening a pull request.

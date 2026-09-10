@@ -1,0 +1,230 @@
+- For Usage: pnpm dlx shadcn@latest add https://registry.watermelon.sh/r/credit-usage-card.json
+import { CreditUsageCard } from './original';
+
+const CreditUsageCardDemo = () => {
+  const customHistory = [
+    { date: 'Dec 21, 09:26 PM', model: 'Claude 4.5 Sonnet Thinking', credits: '641.5K', cost: '$0.54' },
+    { date: 'Dec 21, 09:21 PM', model: 'Claude 4.5 Sonnet Thinking', credits: '334.1K', cost: '$0.27' },
+    { date: 'Dec 21, 09:18 PM', model: 'GPT 5.1 Codex Max', credits: '194.4K', cost: '$0.11' },
+    { date: 'Dec 21, 09:16 PM', model: 'Claude 4.5 Sonnet Thinking', credits: '277.1K', cost: '$0.21' },
+  ];
+
+  return (
+    <CreditUsageCard 
+      usedCreditsPercent={56.4}
+      totalCreditsLabel="100M CREDITS"
+      creditsUsedLabel="56.4M"
+      creditsLeftLabel="43.6M"
+      usageHistory={customHistory}
+      onAutoSwitchChange={(enabled) => console.log("Auto-switch is now:", enabled)}
+      onManagePlan={() => alert("Redirecting to billing...")}
+      onViewAll={() => console.log("Showing all history")}
+    />
+  );
+};
+
+export default CreditUsageCardDemo;
+
+- For Connected Apps / Oauth / API : pnpm dlx shadcn@latest add https://registry.watermelon.sh/r/integration-card.json
+"use client";
+import { IntegrationsCard } from './original';
+import { SiSlack, SiDiscord, SiGithub } from 'react-icons/si';
+
+const MOCK_INTEGRATIONS = [
+    {
+        id: '1',
+        name: 'Slack',
+        entities: 'CHANNELS, MESSAGES, USERS',
+        description: 'Send notifications to Slack channels or users when specific events occur in your workflow.',
+        tags: ['Communication', 'Notifications'],
+        triggers: 12,
+        actions: 8,
+        available: true,
+        icon: <SiSlack className="text-[#E01E5A]" size={20} />
+    },
+    {
+        id: '2',
+        name: 'Discord',
+        entities: 'SERVERS, CHANNELS, WEBHOOKS',
+        description: 'Automate your Discord server by sending rich media messages and managing member roles.',
+        tags: ['Community', 'Webhooks'],
+        triggers: 5,
+        actions: 14,
+        available: true,
+        icon: <SiDiscord className="text-[#5865F2]" size={20} />
+    },
+    {
+        id: '3',
+        name: 'GitHub',
+        entities: 'REPOS, ISSUES, PULL REQUESTS',
+        description: 'Connect your development workflow to trigger actions on new commits or pull requests.',
+        tags: ['Development', 'Version Control'],
+        triggers: 24,
+        actions: 10,
+        available: false,
+        icon: <SiGithub className="text-[#181717] dark:text-white" size={20} />
+    }
+];
+
+export default function IntegrationsDemo() {
+    return (
+        <IntegrationsCard 
+            title="Connected Apps"
+            items={MOCK_INTEGRATIONS} 
+        />
+    );
+}
+
+- For Onboarding Checklist & Screen : pnpm dlx shadcn@latest add https://registry.watermelon.sh/r/onboarding-checklist.json && pnpm dlx shadcn@latest add https://registry.watermelon.sh/r/onboarding-screen.json
+import { OnboardingChecklist } from './original';
+
+const DEMO_STEPS = [
+    { id: 1, title: "Create your profile", isCompleted: true },
+    { id: 2, title: "Add your first campaign", isCompleted: true },
+    { id: 3, title: "Set budget & rules", isCompleted: false },
+    { id: 4, title: "Invite creators", isCompleted: false },
+    { id: 5, title: "Review submissions & approve", isCompleted: false },
+];
+
+export default function OnboardingChecklistDemo() {
+    return (
+            <OnboardingChecklist steps={DEMO_STEPS} />
+    );
+}
+
+"use client";
+
+import { OnboardingScreen } from './original';
+
+export default function OnboardingDemo() {
+    const handleOnboardingComplete = (data: any) => {
+        console.log("Onboarding Data Captured:", data);
+    };
+
+    return (
+        <div className="w-full">
+            <OnboardingScreen 
+                title="Create Workspace"
+                subtitle="Setting up your private workspace for collaboration."
+                businessNameLabel="Workspace Name"
+                businessNamePlaceholder="e.g. Design Team"
+                legalNameLabel="Company Entity"
+                legalNamePlaceholder="e.g. Design Lab LLC"
+                nextButtonText="Continue Setup"
+                finishButtonText="Launch App"
+                tooltipMainText="Upload workspace logo"
+                rightSectionDescription="This information will be used to customize your dashboard experience and team collaboration settings."
+                onComplete={handleOnboardingComplete} 
+            />
+        </div>
+    );
+}
+
+- For Feedback : pnpm dlx shadcn@latest add https://registry.watermelon.sh/r/feedback.json && pnpm dlx shadcn@latest add https://registry.watermelon.sh/r/feedback-action.json
+import {FeedbackComponent} from './original';
+
+export default function FeedbackComponentDemo() {
+  const handleSubmit = (data: { rating: 'up' | 'down'; feedback: string }) => {
+    console.log('Feedback submitted:', data);
+  };
+
+  return (
+    <div className="flex items-center justify-center">
+    <FeedbackComponent onSubmit={handleSubmit} />
+    </div>
+  );
+};
+
+import { FeedbackAction } from './original';
+
+export default function FeedbackActionDemo() {
+  const handleSyncRetry = () => {
+    console.log('Retrying sync...');
+  };
+
+  return (
+    <FeedbackAction
+      errorMessage="Sync Failed"
+      loadingMessage="Syncing"
+      onRetry={handleSyncRetry}
+    />
+  );
+}
+
+- For Playground : pnpm dlx shadcn@latest add https://registry.watermelon.sh/r/quick-switcher.json && pnpm dlx shadcn@latest add https://registry.watermelon.sh/r/select-ai-agent.json
+'use client';
+
+import { QuickSwitcher } from './original';
+import { LuSparkle } from 'react-icons/lu';
+import { TbPhoto } from 'react-icons/tb';
+
+const QuickSwitcherDemo = () => {
+  return (
+    <div className="flex items-center justify-center">
+      <QuickSwitcher
+        defaultMode="ask"
+        askIcon={<LuSparkle size={26} />}
+        generateIcon={<TbPhoto size={26} />}
+        askLabel="Ask Anything"
+        generateLabel="Generate Image"
+        onActionClick={(mode) => {
+          console.log('Current mode:', mode);
+        }}
+      />
+    </div>
+  );
+};
+
+export default QuickSwitcherDemo;
+
+import { SelectAIAgent } from './original';
+import { HugeiconsIcon } from '@hugeicons/react';
+import {
+  ChatGptIcon,
+  ClaudeIcon,
+  GoogleGeminiIcon,
+} from '@hugeicons/core-free-icons';
+
+const AGENTS = [
+  {
+    id: 'chatgpt',
+    name: 'Chatgpt',
+    icon: (
+      <HugeiconsIcon
+        icon={ChatGptIcon}
+        size={24}
+        color="#2b2b2b "
+        strokeWidth={1.5}
+      />
+    ),
+  },
+  {
+    id: 'gemini',
+    name: 'Gemini',
+    icon: (
+      <HugeiconsIcon
+        icon={GoogleGeminiIcon}
+        size={24}
+        color="#003355"
+        strokeWidth={1.5}
+      />
+    ),
+  },
+  {
+    id: 'claude',
+    name: 'Claude',
+    icon: (
+      <HugeiconsIcon
+        icon={ClaudeIcon}
+        size={24}
+        color="#D97757"
+        strokeWidth={1.5}
+      />
+    ),
+  },
+];
+
+export default function SelectAIAgentDemo() {
+  return <SelectAIAgent agents={AGENTS} />;
+}
+

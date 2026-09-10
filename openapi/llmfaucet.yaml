@@ -1,0 +1,672 @@
+openapi: 3.1.0
+info:
+  title: llmfaucet API
+  version: 0.1.0
+  description: OpenAI-compatible public AI gateway and account API.
+servers:
+  - url: https://api.llmfaucet.dev
+    description: Production gateway
+tags:
+  - name: System
+  - name: Compatibility
+  - name: Account
+  - name: Public
+  - name: Waitlist
+  - name: Admin
+  - name: Webhooks
+paths:
+  /health:
+    get:
+      tags: [System]
+      security: []
+      operationId: getHealth
+      responses:
+        '200':
+          {
+            description: Health status,
+            content: { application/json: { schema: { $ref: '#/components/schemas/Health' } } },
+          }
+  /status:
+    get:
+      tags: [System]
+      security: []
+      operationId: getStatus
+      responses:
+        '200':
+          {
+            description: Service status,
+            content: { application/json: { schema: { $ref: '#/components/schemas/Status' } } },
+          }
+  /v1/models:
+    get:
+      tags: [Compatibility]
+      security: []
+      operationId: listModels
+      responses:
+        '200':
+          {
+            description: Model catalog,
+            content: { application/json: { schema: { $ref: '#/components/schemas/ModelList' } } },
+          }
+  /v1/chat/completions:
+    post:
+      tags: [Compatibility]
+      operationId: createChatCompletion
+      requestBody:
+        {
+          required: true,
+          content: { application/json: { schema: { $ref: '#/components/schemas/ChatCompletionRequest' } } },
+        }
+      responses:
+        '200':
+          {
+            description: Chat completion or SSE stream,
+            content:
+              {
+                application/json: { schema: { $ref: '#/components/schemas/ChatCompletionResponse' } },
+                text/event-stream: { schema: { type: string } },
+              },
+          }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /v1/completions:
+    post:
+      tags: [Compatibility]
+      operationId: createCompletion
+      requestBody:
+        {
+          required: true,
+          content: { application/json: { schema: { $ref: '#/components/schemas/CompletionRequest' } } },
+        }
+      responses:
+        '200':
+          {
+            description: Completion response,
+            content: { application/json: { schema: { $ref: '#/components/schemas/CompletionResponse' } } },
+          }
+        '400': { $ref: '#/components/responses/BadRequest' }
+  /v1/embeddings:
+    post:
+      tags: [Compatibility]
+      operationId: createEmbedding
+      requestBody:
+        { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/EmbeddingRequest' } } } }
+      responses:
+        '200':
+          {
+            description: Embeddings,
+            content: { application/json: { schema: { $ref: '#/components/schemas/EmbeddingResponse' } } },
+          }
+        '400': { $ref: '#/components/responses/BadRequest' }
+  /v1/messages:
+    post:
+      tags: [Compatibility]
+      operationId: createAnthropicMessage
+      requestBody:
+        {
+          required: true,
+          content: { application/json: { schema: { $ref: '#/components/schemas/AnthropicMessageRequest' } } },
+        }
+      responses:
+        '200':
+          {
+            description: Anthropic-compatible response,
+            content: { application/json: { schema: { $ref: '#/components/schemas/AnthropicMessageResponse' } } },
+          }
+  /v1/messages/count_tokens:
+    post:
+      tags: [Compatibility]
+      operationId: countAnthropicTokens
+      requestBody:
+        { required: true, content: { application/json: { schema: { type: object, additionalProperties: true } } } }
+      responses:
+        '200':
+          {
+            description: Token count,
+            content:
+              {
+                application/json:
+                  {
+                    schema: { type: object, properties: { input_tokens: { type: integer } }, required: [input_tokens] },
+                  },
+              },
+          }
+  /v1/responses:
+    post:
+      tags: [Compatibility]
+      operationId: createResponse
+      requestBody:
+        { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ResponsesRequest' } } } }
+      responses:
+        '200':
+          {
+            description: Responses API result,
+            content: { application/json: { schema: { $ref: '#/components/schemas/ResponsesResponse' } } },
+          }
+  /v1/usage:
+    get:
+      tags: [Account]
+      operationId: getV1Usage
+      security:
+        - bearerAuth: []
+        - sessionCookie: []
+      responses:
+        '200': { description: Usage, content: { application/json: { schema: { $ref: '#/components/schemas/Usage' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /account:
+    get:
+      tags: [Account]
+      operationId: getAccount
+      security: [{ bearerAuth: [] }, { sessionCookie: [] }]
+      responses:
+        '200':
+          { description: Account, content: { application/json: { schema: { $ref: '#/components/schemas/Account' } } } }
+    delete:
+      tags: [Account]
+      operationId: deleteAccount
+      security: [{ sessionCookie: [] }]
+      responses: { '204': { description: Account deleted } }
+  /account/keys:
+    get:
+      tags: [Account]
+      operationId: listApiKeys
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          {
+            description: API keys,
+            content:
+              {
+                application/json:
+                  {
+                    schema:
+                      {
+                        type: object,
+                        properties: { keys: { type: array, items: { $ref: '#/components/schemas/ApiKey' } } },
+                        required: [keys],
+                      },
+                  },
+              },
+          }
+    post:
+      tags: [Account]
+      operationId: createApiKey
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        {
+          required: true,
+          content:
+            {
+              application/json: { schema: { type: object, properties: { name: { type: string } }, required: [name] } },
+            },
+        }
+      responses:
+        '201':
+          {
+            description: API key created,
+            content: { application/json: { schema: { $ref: '#/components/schemas/ApiKey' } } },
+          }
+  /account/keys/{id}:
+    parameters: [{ $ref: '#/components/parameters/KeyId' }]
+    delete:
+      tags: [Account]
+      operationId: revokeApiKey
+      security: [{ sessionCookie: [] }]
+      responses: { '204': { description: API key revoked } }
+  /account/usage:
+    get:
+      tags: [Account]
+      operationId: getAccountUsage
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          {
+            description: Account usage,
+            content: { application/json: { schema: { $ref: '#/components/schemas/Usage' } } },
+          }
+  /account/preferences:
+    get:
+      tags: [Account]
+      operationId: getPreferences
+      security: [{ sessionCookie: [] }]
+      responses:
+        {
+          '200':
+            {
+              description: Preferences,
+              content: { application/json: { schema: { $ref: '#/components/schemas/Preferences' } } },
+            },
+        }
+    patch:
+      tags: [Account]
+      operationId: updatePreferences
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/Preferences' } } } }
+      responses:
+        {
+          '200':
+            {
+              description: Updated preferences,
+              content: { application/json: { schema: { $ref: '#/components/schemas/Preferences' } } },
+            },
+        }
+  /account/onboarding/complete:
+    post:
+      tags: [Account]
+      operationId: completeOnboarding
+      security: [{ sessionCookie: [] }]
+      responses: { '204': { description: Onboarding completed } }
+  /account/onboarding/dismiss:
+    post:
+      tags: [Account]
+      operationId: dismissOnboarding
+      security: [{ sessionCookie: [] }]
+      responses: { '204': { description: Onboarding dismissed } }
+  /account/onboarding/replay:
+    post:
+      tags: [Account]
+      operationId: replayOnboarding
+      security: [{ sessionCookie: [] }]
+      responses: { '204': { description: Onboarding replay enabled } }
+  /account/sync-sponsorship:
+    post:
+      tags: [Account]
+      operationId: syncSponsorship
+      security: [{ sessionCookie: [] }]
+      responses:
+        {
+          '200':
+            {
+              description: Sponsorship synchronized,
+              content: { application/json: { schema: { type: object, additionalProperties: true } } },
+            },
+        }
+  /auth/logout:
+    post:
+      tags: [Account]
+      operationId: logout
+      security: [{ sessionCookie: [] }]
+      responses: { '204': { description: Session ended } }
+  /auth/github:
+    get:
+      tags: [Account]
+      security: []
+      operationId: startGithubOAuth
+      responses: { '302': { description: Redirect to GitHub OAuth } }
+  /auth/github/callback:
+    get:
+      tags: [Account]
+      security: []
+      operationId: finishGithubOAuth
+      parameters:
+        - { name: code, in: query, required: true, schema: { type: string } }
+        - { name: state, in: query, required: true, schema: { type: string } }
+      responses: { '302': { description: Redirect to the web application } }
+  /api/public/github:
+    get:
+      tags: [Public]
+      security: []
+      operationId: getPublicGithub
+      responses:
+        {
+          '200':
+            {
+              description: Public GitHub data,
+              content: { application/json: { schema: { type: object, additionalProperties: true } } },
+            },
+        }
+  /api/public/sponsors:
+    get:
+      tags: [Public]
+      security: []
+      operationId: getPublicSponsors
+      responses:
+        {
+          '200':
+            {
+              description: Sponsor directory,
+              content: { application/json: { schema: { $ref: '#/components/schemas/SponsorDirectory' } } },
+            },
+        }
+  /api/public/metrics:
+    get:
+      tags: [Public]
+      security: []
+      operationId: getPublicMetrics
+      responses:
+        {
+          '200':
+            {
+              description: Public metrics,
+              content: { application/json: { schema: { $ref: '#/components/schemas/PublicMetrics' } } },
+            },
+        }
+  /api/waitlist:
+    post:
+      tags: [Waitlist]
+      operationId: applyToWaitlist
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        {
+          required: true,
+          content: { application/json: { schema: { $ref: '#/components/schemas/WaitlistApplication' } } },
+        }
+      responses:
+        {
+          '201':
+            {
+              description: Waitlist application,
+              content: { application/json: { schema: { $ref: '#/components/schemas/WaitlistRecord' } } },
+            },
+        }
+  /api/waitlist/me:
+    get:
+      tags: [Waitlist]
+      operationId: getMyWaitlistApplication
+      security: [{ sessionCookie: [] }]
+      responses:
+        {
+          '200':
+            {
+              description: Current application,
+              content: { application/json: { schema: { $ref: '#/components/schemas/WaitlistRecord' } } },
+            },
+        }
+    patch:
+      tags: [Waitlist]
+      operationId: updateMyWaitlistApplication
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        {
+          required: true,
+          content: { application/json: { schema: { $ref: '#/components/schemas/WaitlistApplication' } } },
+        }
+      responses:
+        {
+          '200':
+            {
+              description: Updated application,
+              content: { application/json: { schema: { $ref: '#/components/schemas/WaitlistRecord' } } },
+            },
+        }
+  /api/waitlist/me/key:
+    post:
+      tags: [Waitlist]
+      operationId: createWaitlistKey
+      security: [{ sessionCookie: [] }]
+      responses:
+        {
+          '201':
+            {
+              description: Waitlist API key,
+              content: { application/json: { schema: { $ref: '#/components/schemas/ApiKey' } } },
+            },
+        }
+  /api/admin/waitlist:
+    get:
+      tags: [Admin]
+      operationId: listWaitlist
+      security: [{ sessionCookie: [] }]
+      responses:
+        {
+          '200':
+            {
+              description: Waitlist records,
+              content:
+                {
+                  application/json:
+                    {
+                      schema:
+                        {
+                          type: object,
+                          properties:
+                            { items: { type: array, items: { $ref: '#/components/schemas/WaitlistRecord' } } },
+                          required: [items],
+                        },
+                    },
+                },
+            },
+        }
+  /api/admin/waitlist/{id}:
+    parameters: [{ $ref: '#/components/parameters/WaitlistId' }]
+    get:
+      tags: [Admin]
+      operationId: getWaitlistRecord
+      security: [{ sessionCookie: [] }]
+      responses:
+        {
+          '200':
+            {
+              description: Waitlist record,
+              content: { application/json: { schema: { $ref: '#/components/schemas/WaitlistRecord' } } },
+            },
+        }
+  /api/admin/waitlist/{id}/approve:
+    parameters: [{ $ref: '#/components/parameters/WaitlistId' }]
+    post:
+      tags: [Admin]
+      operationId: approveWaitlist
+      security: [{ sessionCookie: [] }]
+      responses:
+        {
+          '200':
+            {
+              description: Approved record,
+              content: { application/json: { schema: { $ref: '#/components/schemas/WaitlistRecord' } } },
+            },
+        }
+  /api/admin/waitlist/{id}/revoke:
+    parameters: [{ $ref: '#/components/parameters/WaitlistId' }]
+    post:
+      tags: [Admin]
+      operationId: revokeWaitlist
+      security: [{ sessionCookie: [] }]
+      responses:
+        {
+          '200':
+            {
+              description: Revoked record,
+              content: { application/json: { schema: { $ref: '#/components/schemas/WaitlistRecord' } } },
+            },
+        }
+  /webhooks/github-sponsors:
+    post:
+      tags: [Webhooks]
+      security: []
+      operationId: receiveGithubSponsorsWebhook
+      parameters:
+        - { name: X-Hub-Signature-256, in: header, required: false, schema: { type: string } }
+        - { name: X-GitHub-Event, in: header, required: false, schema: { type: string } }
+      requestBody:
+        { required: true, content: { application/json: { schema: { type: object, additionalProperties: true } } } }
+      responses: { '204': { description: Webhook accepted } }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer }
+    sessionCookie: { type: apiKey, in: cookie, name: llmfaucet_session }
+  parameters:
+    KeyId: { name: id, in: path, required: true, schema: { type: string } }
+    WaitlistId: { name: id, in: path, required: true, schema: { type: string } }
+  responses:
+    BadRequest:
+      {
+        description: Invalid request,
+        content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } },
+      }
+    Unauthorized:
+      {
+        description: Authentication required,
+        content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } },
+      }
+    RateLimited:
+      {
+        description: Rate limit exceeded,
+        content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } },
+      }
+  schemas:
+    Error:
+      type: object
+      properties:
+        { error: { type: string }, message: { type: string }, code: { type: string }, request_id: { type: string } }
+      additionalProperties: true
+    Health:
+      type: object
+      properties:
+        { status: { type: string }, environment: { type: string }, updatedAt: { type: string, format: date-time } }
+      additionalProperties: true
+    Status:
+      type: object
+      properties:
+        {
+          status: { type: string, enum: [operational, degraded, unavailable] },
+          updatedAt: { type: string, format: date-time },
+          providers: { type: array, items: { type: object, additionalProperties: true } },
+        }
+      additionalProperties: true
+    Model:
+      type: object
+      required: [id, provider]
+      properties:
+        id: { type: string }
+        provider: { type: string }
+        capabilities: { type: array, items: { type: string } }
+        quality: { type: number }
+        speed: { type: number }
+        context: { type: integer }
+        supported_parameters: { type: array, items: { type: string } }
+      additionalProperties: true
+    ModelList:
+      type: object
+      required: [object, data]
+      properties:
+        {
+          object: { type: string, default: list },
+          data: { type: array, items: { $ref: '#/components/schemas/Model' } },
+        }
+    ChatMessage:
+      type: object
+      required: [role]
+      properties:
+        {
+          role: { type: string },
+          content: {},
+          name: { type: string },
+          tool_calls: { type: array, items: { type: object, additionalProperties: true } },
+          tool_call_id: { type: string },
+        }
+      additionalProperties: true
+    ChatCompletionRequest:
+      type: object
+      required: [messages]
+      properties:
+        {
+          model: { type: string },
+          messages: { type: array, items: { $ref: '#/components/schemas/ChatMessage' } },
+          stream: { type: boolean },
+          max_tokens: { type: integer },
+          temperature: { type: number },
+          tools: { type: array, items: { type: object, additionalProperties: true } },
+          tool_choice: {},
+          response_format: {},
+        }
+      additionalProperties: true
+    ChatCompletionResponse:
+      type: object
+      properties:
+        {
+          id: { type: string },
+          object: { type: string },
+          created: { type: integer },
+          model: { type: string },
+          choices: { type: array, items: { type: object, additionalProperties: true } },
+          usage: { $ref: '#/components/schemas/TokenUsage' },
+        }
+      additionalProperties: true
+    CompletionRequest:
+      type: object
+      required: [prompt]
+      properties:
+        {
+          model: { type: string },
+          prompt: {},
+          max_tokens: { type: integer },
+          temperature: { type: number },
+          stream: { type: boolean },
+        }
+      additionalProperties: true
+    CompletionResponse: { type: object, additionalProperties: true }
+    EmbeddingRequest:
+      type: object
+      required: [input]
+      properties: { model: { type: string }, input: {} }
+      additionalProperties: true
+    EmbeddingResponse: { type: object, additionalProperties: true }
+    AnthropicMessageRequest:
+      {
+        type: object,
+        required: [messages],
+        properties:
+          {
+            model: { type: string },
+            messages: { type: array, items: { type: object, additionalProperties: true } },
+            max_tokens: { type: integer },
+            stream: { type: boolean },
+          },
+        additionalProperties: true,
+      }
+    AnthropicMessageResponse: { type: object, additionalProperties: true }
+    ResponsesRequest:
+      {
+        type: object,
+        properties: { model: { type: string }, input: {}, stream: { type: boolean } },
+        additionalProperties: true,
+      }
+    ResponsesResponse: { type: object, additionalProperties: true }
+    TokenUsage:
+      {
+        type: object,
+        properties:
+          { prompt_tokens: { type: integer }, completion_tokens: { type: integer }, total_tokens: { type: integer } },
+        additionalProperties: true,
+      }
+    Usage: { type: object, additionalProperties: true }
+    Account: { type: object, additionalProperties: true }
+    ApiKey:
+      {
+        type: object,
+        properties:
+          {
+            id: { type: string },
+            name: { type: string },
+            key: { type: string },
+            created_at: { type: string, format: date-time },
+            last_used_at: { type: string, format: date-time, nullable: true },
+          },
+        additionalProperties: true,
+      }
+    Preferences: { type: object, additionalProperties: true }
+    WaitlistApplication:
+      {
+        type: object,
+        properties:
+          {
+            email: { type: string, format: email },
+            useCase: { type: string },
+            teamSize: { type: string },
+            excitedAbout: { type: string },
+          },
+        additionalProperties: true,
+      }
+    WaitlistRecord: { type: object, additionalProperties: true }
+    SponsorDirectory:
+      {
+        type: object,
+        properties:
+          {
+            special: { type: array, items: { type: object, additionalProperties: true } },
+            current: { type: array, items: { type: object, additionalProperties: true } },
+          },
+        additionalProperties: true,
+      }
+    PublicMetrics: { type: object, additionalProperties: true }

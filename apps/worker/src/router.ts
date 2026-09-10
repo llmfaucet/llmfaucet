@@ -1,7 +1,7 @@
 import { findModel, MODELS } from './catalog';
 import type { Model, NormalizedRequest } from './types';
 
-const aliases: Record<string, string> = { fastest: 'fast', cheapest: 'fast', smart: 'smart', coding: 'coding', fast: 'fast', auto: 'auto' };
+const aliases: Record<string, string> = { fastest: 'fast', smart: 'smart', coding: 'coding', fast: 'fast', auto: 'auto' };
 
 export function normalize(body: Record<string, unknown>, capability: NormalizedRequest['capability'] = 'chat'): NormalizedRequest {
   const messages = Array.isArray(body.messages) ? body.messages as any[] : typeof body.prompt === 'string' ? [{ role: 'user', content: body.prompt }] : [];
@@ -14,7 +14,7 @@ export function normalize(body: Record<string, unknown>, capability: NormalizedR
 export function supportsRequest(req: NormalizedRequest, model: Model): boolean {
   if (!model.capabilities.includes(req.capability)) return false;
   if (req.capability !== 'embeddings' && !model.supported_parameters.includes('max_tokens')) return false;
-  if (req.stream && model.provider === 'ai-horde') return false;
+  if (req.stream && !model.supported_parameters.includes('stream')) return false;
   if (req.tools && !model.capabilities.includes('tools')) return false;
   if (req.response_format && !model.supported_parameters.includes('response_format')) return false;
   if (req.temperature !== undefined && !model.supported_parameters.includes('temperature')) return false;
@@ -25,10 +25,15 @@ export function selectModel(req: NormalizedRequest, unhealthy = new Set<string>(
   const requested = findModel(req.model, models);
   if (requested && supportsRequest(req, requested) && !unhealthy.has(requested.provider)) return requested;
   const selector = aliases[req.selector.replace(/^auto:?/, '')] ?? 'auto';
+  const rank = (model: Model): number => {
+    const provider = (model.provider_priority ?? 0) * 0.1 + Math.log(model.provider_weight ?? 1);
+    const coding = selector === 'coding' && /(coder|code|deepseek)/i.test(model.id) ? 5 : 0;
+    if (selector === 'fast') return model.speed + provider;
+    if (selector === 'smart') return model.quality + provider;
+    return coding + model.quality * 3 + model.speed * 2 + provider;
+  };
   return models.filter((m) => supportsRequest(req, m) && !unhealthy.has(m.provider)).sort((a, b) => {
-    const ac = selector === 'coding' && /(coder|code|deepseek)/i.test(a.id) ? 5 : 0;
-    const bc = selector === 'coding' && /(coder|code|deepseek)/i.test(b.id) ? 5 : 0;
-    return selector === 'fast' ? b.speed - a.speed : selector === 'smart' ? b.quality - a.quality : (bc + b.quality * 3 + b.speed * 2) - (ac + a.quality * 3 + a.speed * 2);
+    return rank(b) - rank(a);
   })[0];
 }
 

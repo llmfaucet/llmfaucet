@@ -13,8 +13,8 @@ const env = envValues as never;
 const originalFetch = globalThis.fetch;
 try {
   globalThis.fetch = (async (input: RequestInfo | URL) => {
-    const url = String(input);
-    if (url.includes('api.github.com')) return new Response(JSON.stringify({ stargazers_count: 12, forks_count: 3, open_issues_count: 1 }), { status: 200 });
+    const url = new URL(String(input));
+    if (url.hostname === 'api.github.com') return new Response(JSON.stringify({ stargazers_count: 12, forks_count: 3, open_issues_count: 1 }), { status: 200 });
     return new Response('{}', { status: 404 });
   }) as typeof fetch;
   assert.equal((await githubRepository(env)).stars, 12);
@@ -26,7 +26,7 @@ try {
   const freshMetrics = await publicMetrics({ ...envValues, BUDGETS: freshKv } as never, { providers: ['pollinations'], models: [{ provider: 'pollinations' }] });
   assert.equal(freshMetrics.healthyUpstreams, 1);
   const staleKv = new MemoryKV();
-  await staleKv.put('health:pollinations', JSON.stringify({ status: 'healthy', checked_at: String(Date.now() - 16 * 60 * 1000) }));
+  await staleKv.put('health:pollinations', JSON.stringify({ status: 'healthy', checked_at: String(Date.now() - 7 * 60 * 60 * 1000) }));
   const staleMetrics = await publicMetrics({ ...envValues, BUDGETS: staleKv } as never, { providers: ['pollinations'], models: [{ provider: 'pollinations' }] });
   assert.equal(staleMetrics.healthyUpstreams, null);
   assert.equal(staleMetrics.status, 'unavailable');

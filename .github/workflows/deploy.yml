@@ -4,6 +4,8 @@ on:
 concurrency:
   group: llmfaucet-deploy-${{ github.ref }}
   cancel-in-progress: false
+permissions:
+  contents: read
 jobs:
   deploy:
     runs-on: ubuntu-latest

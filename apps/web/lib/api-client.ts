@@ -2,12 +2,19 @@ import type { AccountResponse, ApiError, ModelRecord, Preferences, PublicGithub,
 import type { WaitlistApplication } from '@llmfaucet/types';
 import { PREVIEW_ENDPOINT } from '@llmfaucet/config';
 
+export interface AdminProvider {
+  id: string; name: string; display_name: string; base_url: string; adapter_type: string;
+  api_key_required: boolean; is_enabled: boolean; priority: number; weight: number;
+  health?: { status: string; latencyMs?: number; errorMessage?: string; timestamp?: string };
+  model_count: number;
+}
+
 export const apiBase =
   process.env.NEXT_PUBLIC_API_BASE_URL ||
   (process.env.NODE_ENV === 'development' ? 'http://localhost:8787' : '');
 export const publicApiEndpoint = apiBase || 'https://api.llmfaucet.dev';
 export const previewApiEndpoint = process.env.NEXT_PUBLIC_PREVIEW_API_BASE_URL || PREVIEW_ENDPOINT;
-export const authUrl = apiBase ? `${apiBase}/auth/github` : '/login?error=api-endpoint-not-configured';
+export const authUrl = `${publicApiEndpoint}/auth/github`;
 
 export const isPreviewApiConfigured = Boolean(apiBase) && apiBase === previewApiEndpoint.replace(/\/v1$/, '');
 
@@ -87,6 +94,13 @@ export const api = {
   createPreviewKey: () => request<{ key: string; prefix: string; warning: string }>('/api/waitlist/me/key', { method: 'POST' }),
   adminWaitlist: (query = '') => request<{ applications: Record<string, unknown>[]; page: number; pageSize: number }>(`/api/admin/waitlist${query}`).then(result => ({ ...result, applications: result.applications.map(normalizeWaitlist) })),
   adminWaitlistDetail: (id: string) => request<{ application: WaitlistApplication; events: Array<Record<string, unknown>> }>(`/api/admin/waitlist/${encodeURIComponent(id)}`),
+  adminProviders: () => request<{ providers: AdminProvider[] }>('/api/admin/providers'),
+  adminProvider: (id: string) => request<{ provider: AdminProvider; models: ModelRecord[] }>(`/api/admin/providers/${encodeURIComponent(id)}`),
+  createProvider: (body: unknown) => request<{ id: string }>('/api/admin/providers', { method: 'POST', body: JSON.stringify(body) }),
+  updateProvider: (id: string, body: unknown) => request<{ success: boolean }>(`/api/admin/providers/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  deleteProvider: (id: string) => request<{ success: boolean }>(`/api/admin/providers/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  refreshProvider: (id: string) => request<{ success: boolean; models: number }>(`/api/admin/providers/${encodeURIComponent(id)}/refresh`, { method: 'POST' }),
+  checkProviderHealth: (id: string) => request<{ health: AdminProvider['health'] }>(`/api/admin/providers/${encodeURIComponent(id)}/health`, { method: 'POST' }),
   adminUpdateWaitlist: (id: string, body: unknown) => request(`/api/admin/waitlist/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(body) }),
   approveWaitlist: (id: string) => request(`/api/admin/waitlist/${encodeURIComponent(id)}/approve`, { method: 'POST' }),
   revokeWaitlist: (id: string) => request(`/api/admin/waitlist/${encodeURIComponent(id)}/revoke`, { method: 'POST' }),
