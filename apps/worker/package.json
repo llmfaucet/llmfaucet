@@ -8,7 +8,7 @@
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "lint": "tsc --noEmit",
-    "test": "tsx test/gateway.test.ts && tsx test/waitlist.test.ts && tsx test/provider-registry.test.ts && tsx test/product-components.test.ts && tsx test/public-metrics.test.ts",
+    "test": "tsx test/gateway.test.ts && tsx test/waitlist.test.ts && tsx test/provider-registry.test.ts && tsx test/product-components.test.ts && tsx test/public-metrics.test.ts && tsx test/state-maintenance.test.ts",
     "deploy:preview": "wrangler deploy --env preview",
     "deploy:production": "wrangler deploy --env production"
   },

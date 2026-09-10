@@ -629,9 +629,8 @@ const handler = {
       });
       return;
     }
-    const models = await catalog(env);
     const cursorKey = `provider:probe:cursor:${controller.cron.replace(/[^a-z0-9]+/gi, '-')}`;
-    await withMaintenanceLease(env, 'provider-health', () => probeProviders(env, models, cursorKey));
+    await withMaintenanceLease(env, 'provider-health', () => probeProviders(env, MODELS, cursorKey));
   },
   async queue(batch: MessageBatch<unknown>): Promise<void> {
     for (const message of batch.messages) message.ack();

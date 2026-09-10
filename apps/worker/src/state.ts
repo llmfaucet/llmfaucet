@@ -6,6 +6,9 @@ import { SUPPORTED_CATALOG_PROVIDERS } from './providers/factory';
 
 const valid = (value: unknown): value is Model[] => Array.isArray(value) && value.length > 0 && value.every((model) => model && typeof model.id === 'string' && typeof model.provider === 'string' && SUPPORTED_CATALOG_PROVIDERS.has(model.provider) && /^[a-z0-9][a-z0-9_-]{1,63}$/.test(model.provider) && Array.isArray(model.capabilities) && model.capabilities.every((capability: unknown) => typeof capability === 'string') && typeof model.quality === 'number' && Number.isFinite(model.quality) && typeof model.speed === 'number' && Number.isFinite(model.speed) && typeof model.context === 'number' && Number.isFinite(model.context) && Array.isArray(model.supported_parameters) && model.supported_parameters.every((parameter: unknown) => typeof parameter === 'string'));
 
+export const MAINTENANCE_DELETE_BATCH_SIZE = 500;
+export const MAINTENANCE_DELETE_BATCHES = 12;
+
 export async function catalog(env: Env): Promise<Model[]> {
   const raw = await env.BUDGETS.get('catalog:active', 'json');
   const fallback = valid(raw) ? raw : MODELS;
@@ -47,8 +50,14 @@ export async function scheduledMaintenance(env: Env): Promise<void> {
   if (!env.DB) return;
   const start = new Date(); start.setUTCHours(0, 0, 0, 0);
   await env.DB.prepare('INSERT INTO daily_stats (day, requests, failures) SELECT date(created_at / 1000, \'unixepoch\'), COUNT(*), SUM(CASE WHEN status >= 500 THEN 1 ELSE 0 END) FROM request_logs WHERE created_at >= ? AND created_at < ? GROUP BY 1 ON CONFLICT(day) DO UPDATE SET requests = excluded.requests, failures = excluded.failures').bind(start.getTime() - 86400000, start.getTime() + 86400000).run();
-  await env.DB.prepare('DELETE FROM request_logs WHERE rowid IN (SELECT rowid FROM request_logs WHERE created_at < ? ORDER BY created_at LIMIT 500)').bind(Date.now() - 30 * 86400000).run();
-  await env.DB.prepare("DELETE FROM provider_health_history WHERE rowid IN (SELECT rowid FROM provider_health_history WHERE checked_at < datetime('now', '-30 days') ORDER BY checked_at LIMIT 500)").run();
-  await env.DB.prepare("DELETE FROM daily_stats WHERE rowid IN (SELECT rowid FROM daily_stats WHERE day < date('now', '-30 days') ORDER BY day LIMIT 500)").run();
-  await env.DB.prepare("DELETE FROM provider_daily_stats WHERE rowid IN (SELECT rowid FROM provider_daily_stats WHERE date < date('now', '-30 days') ORDER BY date LIMIT 500)").run();
+  const prune = async (query: string, ...args: unknown[]): Promise<void> => {
+    for (let batch = 0; batch < MAINTENANCE_DELETE_BATCHES; batch += 1) {
+      const result = await env.DB!.prepare(query).bind(...args).run();
+      if ((result.meta?.changes ?? 0) < MAINTENANCE_DELETE_BATCH_SIZE) break;
+    }
+  };
+  await prune('DELETE FROM request_logs WHERE rowid IN (SELECT rowid FROM request_logs WHERE created_at < ? ORDER BY created_at LIMIT 500)', Date.now() - 30 * 86400000);
+  await prune("DELETE FROM provider_health_history WHERE rowid IN (SELECT rowid FROM provider_health_history WHERE checked_at < datetime('now', '-30 days') ORDER BY checked_at LIMIT 500)");
+  await prune("DELETE FROM daily_stats WHERE rowid IN (SELECT rowid FROM daily_stats WHERE day < date('now', '-30 days') ORDER BY day LIMIT 500)");
+  await prune("DELETE FROM provider_daily_stats WHERE rowid IN (SELECT rowid FROM provider_daily_stats WHERE date < date('now', '-30 days') ORDER BY date LIMIT 500)");
 }
