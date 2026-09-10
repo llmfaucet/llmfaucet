@@ -21,13 +21,12 @@ async function mapWithConcurrency<T>(items: T[], concurrency: number, task: (ite
   await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, worker));
 }
 
-async function providerBatch(env: Env, cursorKey: string): Promise<RegisteredProvider[]> {
+async function providerBatch(env: Env, cursorKey: string): Promise<{ providers: RegisteredProvider[]; nextCursor: number }> {
   const registry = new ProviderRegistry(env);
   const cursor = Number.parseInt((await env.BUDGETS.get(cursorKey)) ?? '0', 10);
   const offset = Number.isFinite(cursor) && cursor >= 0 ? cursor : 0;
   const providers = await registry.getEnabledProviders(PROVIDER_BATCH_SIZE, offset);
-  await env.BUDGETS.put(cursorKey, String(providers.length < PROVIDER_BATCH_SIZE ? 0 : offset + PROVIDER_BATCH_SIZE), { expirationTtl: 86400 });
-  return providers;
+  return { providers, nextCursor: providers.length < PROVIDER_BATCH_SIZE ? 0 : offset + PROVIDER_BATCH_SIZE };
 }
 
 function probeUrl(provider: string, env: Env): string {
@@ -50,7 +49,8 @@ export async function probeProvider(provider: string, env: Env, fetcher: typeof 
 
 export async function probeProviders(env: Env, models: Model[]): Promise<void> {
   const registry = new ProviderRegistry(env);
-  const registered = await providerBatch(env, HEALTH_CURSOR_KEY);
+  const batch = await providerBatch(env, HEALTH_CURSOR_KEY);
+  const registered = batch.providers;
   const registeredNames = new Set(registered.map((provider) => provider.name));
   await mapWithConcurrency(registered, PROBE_CONCURRENCY, async (provider) => {
     try {
@@ -68,11 +68,13 @@ export async function probeProviders(env: Env, models: Model[]): Promise<void> {
     const result = await probeProvider(provider, env);
     await env.BUDGETS.put(`health:${provider}`, JSON.stringify({ ...result, checked_at: Date.now() }), { expirationTtl: 7200 });
   });
+  await env.BUDGETS.put(HEALTH_CURSOR_KEY, String(batch.nextCursor), { expirationTtl: 86400 });
 }
 
 export async function refreshProviderModels(env: Env): Promise<void> {
   const registry = new ProviderRegistry(env);
-  const providers = await providerBatch(env, CATALOG_CURSOR_KEY);
+  const batch = await providerBatch(env, CATALOG_CURSOR_KEY);
+  const providers = batch.providers;
   await mapWithConcurrency(providers, PROBE_CONCURRENCY, async (provider) => {
     try {
       await registry.refreshModels(provider.id);
@@ -80,6 +82,7 @@ export async function refreshProviderModels(env: Env): Promise<void> {
       console.error(`[provider-catalog] ${provider.name} failed`, error);
     }
   });
+  await env.BUDGETS.put(CATALOG_CURSOR_KEY, String(batch.nextCursor), { expirationTtl: 604800 });
 }
 
 export async function refreshCatalog(env: Env, models: Model[]): Promise<void> {
