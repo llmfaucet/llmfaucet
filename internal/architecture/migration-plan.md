@@ -13,7 +13,7 @@ must remain behaviorally unchanged.
 | ----------------------------------------------------------- | ------------------------------------- | ------------------------------------------------------- |
 | `src/`, `test/`, `migrations/`, `wrangler.toml`             | `apps/worker/`                        | Git-aware move; preserve Worker-relative imports        |
 | `docs/`                                                     | `apps/web/`                           | Git-aware move; preserve Next App Router                |
-| `src/probe.ts`, `scripts/probe.mjs`, `ecosystem.config.cjs` | `apps/probe/`                         | Isolate probe entrypoints and configuration             |
+| `src/probe.ts` | `apps/worker/src/probe.ts`                         | Keep scheduled probes in the Worker runtime             |
 | `bin/llmfaucet.mjs`                                         | `packages/cli/`                       | Wrap as the publishable CLI entrypoint                  |
 | new public client contracts                                 | `packages/sdk/`                       | Add minimal typed SDK surface                           |
 | shared plans/selectors/contracts                            | `packages/config/`, `packages/types/` | Add dependency-safe shared packages                     |

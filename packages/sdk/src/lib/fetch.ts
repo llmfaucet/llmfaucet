@@ -58,7 +58,11 @@ export async function request<T>(
       if (response.status === 401 && config.onAuthRequired && !new Headers(options.headers).has('authorization')) {
         const token = await config.onAuthRequired();
         headers.set('Authorization', `Bearer ${token}`);
-        response = await fetcher(`${config.baseURL.replace(/\/$/, '')}${path}`, { ...options, headers, signal: controller.signal });
+        response = await fetcher(`${config.baseURL.replace(/\/$/, '')}${path}`, {
+          ...options,
+          headers,
+          signal: controller.signal,
+        });
         body = await response.text();
       }
       if (!response.ok) {

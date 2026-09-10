@@ -48,7 +48,10 @@ export class LlmFaucetClient {
     const fetcher = this.config.fetch ?? globalThis.fetch;
     if (!fetcher) throw new LlmFaucetError({ message: 'Fetch is not available in this runtime' });
     const controller = new AbortController();
-    let timeoutId: ReturnType<typeof setTimeout> | undefined = setTimeout(() => controller.abort(), this.config.timeout);
+    let timeoutId: ReturnType<typeof setTimeout> | undefined = setTimeout(
+      () => controller.abort(),
+      this.config.timeout,
+    );
     const abort = () => controller.abort(options.signal?.reason);
     if (options.signal) {
       if (options.signal.aborted) abort();
@@ -61,11 +64,11 @@ export class LlmFaucetClient {
       if (this.config.apiKey) headers.set('Authorization', `Bearer ${this.config.apiKey}`);
       new Headers(options.headers).forEach((value, key) => headers.set(key, value));
       const response = await fetcher(`${this.baseURL.replace(/\/$/, '')}${path}`, {
-          ...options,
-          credentials: options.credentials ?? this.config.credentials,
-          headers,
-          signal: controller.signal,
-        });
+        ...options,
+        credentials: options.credentials ?? this.config.credentials,
+        headers,
+        signal: controller.signal,
+      });
       clearTimeout(timeoutId);
       timeoutId = undefined;
       yield* parseSse<T>(response);

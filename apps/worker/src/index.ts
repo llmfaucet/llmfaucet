@@ -619,11 +619,11 @@ const handler = {
     }
     return error("Not found", 404);
   },
-  async scheduled(_controller: ScheduledController, env: Env): Promise<void> {
+  async scheduled(controller: ScheduledController, env: Env): Promise<void> {
     const models = await catalog(env);
     await scheduledMaintenance(env);
     await probeProviders(env, models);
-    await refreshCatalog(env, models);
+    if (controller.cron === '0 0 * * *') await refreshCatalog(env, models);
   },
   async queue(batch: MessageBatch<unknown>): Promise<void> {
     for (const message of batch.messages) message.ack();

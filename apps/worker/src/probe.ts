@@ -5,6 +5,18 @@ import { SUPPORTED_CATALOG_PROVIDERS } from './providers/factory';
 
 const defaults: Record<string, string> = { pollinations: 'https://text.pollinations.ai/openai', llm7: 'https://api.llm7.io/v1/chat/completions', 'opencode-zen': 'https://opencode.ai/zen/v1/chat/completions', ovh: 'https://oai.endpoints.kepler.ai.cloud.ovh.net/v1/chat/completions', 'ai-horde': 'https://aihorde.net/api/v2/status' };
 const keys: Record<string, keyof Env> = { pollinations: 'POLLINATIONS_URL', llm7: 'LLM7_URL', 'opencode-zen': 'OPENCODE_ZEN_URL', ovh: 'OVH_URL', 'ai-horde': 'AI_HORDE_URL' };
+const PROBE_CONCURRENCY = 4;
+
+async function mapWithConcurrency<T>(items: T[], concurrency: number, task: (item: T) => Promise<void>): Promise<void> {
+  let next = 0;
+  const worker = async (): Promise<void> => {
+    while (next < items.length) {
+      const item = items[next++];
+      if (item !== undefined) await task(item);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, worker));
+}
 
 function probeUrl(provider: string, env: Env): string {
   const configured = (env[keys[provider]] as string | undefined) || defaults[provider];
@@ -28,17 +40,22 @@ export async function probeProviders(env: Env, models: Model[]): Promise<void> {
   const registry = new ProviderRegistry(env);
   const registered = await registry.getEnabledProviders();
   const registeredNames = new Set(registered.map((provider) => provider.name));
-  await Promise.all(registered.map(async (provider) => {
-    const health = await provider.adapter.checkHealth();
-    await registry.updateHealth(provider.id, health);
-    await env.BUDGETS.put(`health:${provider.name}`, JSON.stringify({ status: health.status === 'down' ? 'unhealthy' : health.status, latency: health.latencyMs, checked_at: Date.now() }), { expirationTtl: 7200 });
-  }));
+  await mapWithConcurrency(registered, PROBE_CONCURRENCY, async (provider) => {
+    try {
+      const health = await provider.adapter.checkHealth();
+      await registry.updateHealth(provider.id, health);
+      await env.BUDGETS.put(`health:${provider.name}`, JSON.stringify({ status: health.status === 'down' ? 'unhealthy' : health.status, latency: health.latencyMs, checked_at: Date.now() }), { expirationTtl: 7200 });
+    } catch (error) {
+      console.error(`[provider-probe] ${provider.name} failed`, error);
+      await env.BUDGETS.put(`health:${provider.name}`, JSON.stringify({ status: 'unhealthy', checked_at: Date.now() }), { expirationTtl: 7200 });
+    }
+  });
 
   const legacy = [...new Set(models.map((model) => model.provider))].filter((provider) => !registeredNames.has(provider));
-  await Promise.all(legacy.map(async (provider) => {
+  await mapWithConcurrency(legacy, PROBE_CONCURRENCY, async (provider) => {
     const result = await probeProvider(provider, env);
     await env.BUDGETS.put(`health:${provider}`, JSON.stringify({ ...result, checked_at: Date.now() }), { expirationTtl: 7200 });
-  }));
+  });
 }
 
 export async function refreshCatalog(env: Env, models: Model[]): Promise<void> {

@@ -15,7 +15,8 @@ native Node modules, or provider SDKs that require Node.
 ## Consequences
 
 Provider adapters stay fetch-based and request CPU/subrequest budgets remain
-explicit. VPS probes are a separate Node process.
+explicit. Health probes and catalog refreshes run from the Worker Cron handler,
+so there is no duplicated server process to operate.
 
 ## Alternatives considered
 

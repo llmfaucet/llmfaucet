@@ -6,10 +6,10 @@ seeds the existing providers without removing the static catalog fallback.
 
 ## Runtime flow
 
-1. The Oracle probe reads enabled providers from D1 and publishes bounded health
-   results to KV.
-2. The probe periodically synchronizes public `/v1/models` results into
-   `provider_models`.
+1. The Worker hourly Cron trigger reads enabled providers from D1 and publishes
+   bounded health results to KV.
+2. The Worker daily Cron trigger refreshes the configured catalog and provider
+   model data without a second server process.
 3. Worker model selection prefers enabled, healthy dynamic models and falls
    back to the checked-in catalog when dynamic data is unavailable.
 4. Admins manage registration, enablement, priority, weight, health checks, and

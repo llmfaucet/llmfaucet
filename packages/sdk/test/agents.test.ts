@@ -14,7 +14,13 @@ describe('agent configuration', () => {
   it('exposes supported agents through the client', () => {
     const agents = new LlmFaucetClient().agents;
     expect(agents.getSupportedAgents().map((agent) => agent.id)).toEqual([
-      'aider', 'cline', 'claude-code', 'continue', 'codex', 'roo-code', 'generic',
+      'aider',
+      'cline',
+      'claude-code',
+      'continue',
+      'codex',
+      'roo-code',
+      'generic',
     ]);
   });
 });
