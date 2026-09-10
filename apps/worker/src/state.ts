@@ -46,9 +46,9 @@ export async function recordRequest(env: Env, data: { provider?: string; model?:
 export async function scheduledMaintenance(env: Env): Promise<void> {
   if (!env.DB) return;
   const start = new Date(); start.setUTCHours(0, 0, 0, 0);
-  await env.DB.prepare('INSERT INTO daily_stats (day, requests, failures) SELECT date(created_at / 1000, \'unixepoch\'), COUNT(*), SUM(CASE WHEN status >= 500 THEN 1 ELSE 0 END) FROM request_logs WHERE created_at >= ? AND created_at < ? GROUP BY 1 ON CONFLICT(day) DO UPDATE SET requests = excluded.requests, failures = excluded.failures').bind(start.getTime(), start.getTime() + 86400000).run();
-  await env.DB.prepare('DELETE FROM request_logs WHERE created_at < ?').bind(Date.now() - 30 * 86400000).run();
-  await env.DB.prepare("DELETE FROM provider_health_history WHERE checked_at < datetime('now', '-30 days')").run();
-  await env.DB.prepare("DELETE FROM daily_stats WHERE day < date('now', '-30 days')").run();
-  await env.DB.prepare("DELETE FROM provider_daily_stats WHERE date < date('now', '-30 days')").run();
+  await env.DB.prepare('INSERT INTO daily_stats (day, requests, failures) SELECT date(created_at / 1000, \'unixepoch\'), COUNT(*), SUM(CASE WHEN status >= 500 THEN 1 ELSE 0 END) FROM request_logs WHERE created_at >= ? AND created_at < ? GROUP BY 1 ON CONFLICT(day) DO UPDATE SET requests = excluded.requests, failures = excluded.failures').bind(start.getTime() - 86400000, start.getTime() + 86400000).run();
+  await env.DB.prepare('DELETE FROM request_logs WHERE rowid IN (SELECT rowid FROM request_logs WHERE created_at < ? ORDER BY created_at LIMIT 500)').bind(Date.now() - 30 * 86400000).run();
+  await env.DB.prepare("DELETE FROM provider_health_history WHERE rowid IN (SELECT rowid FROM provider_health_history WHERE checked_at < datetime('now', '-30 days') ORDER BY checked_at LIMIT 500)").run();
+  await env.DB.prepare("DELETE FROM daily_stats WHERE rowid IN (SELECT rowid FROM daily_stats WHERE day < date('now', '-30 days') ORDER BY day LIMIT 500)").run();
+  await env.DB.prepare("DELETE FROM provider_daily_stats WHERE rowid IN (SELECT rowid FROM provider_daily_stats WHERE date < date('now', '-30 days') ORDER BY date LIMIT 500)").run();
 }
