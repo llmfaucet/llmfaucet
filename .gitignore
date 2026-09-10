@@ -36,6 +36,7 @@ secrets*.json
 terraform.tfstate*
 .terraform/
 .internal/
+/internal/
 .omx/
 *.tsbuildinfo
 
