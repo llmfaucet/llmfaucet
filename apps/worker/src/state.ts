@@ -34,7 +34,7 @@ export async function unhealthyProviders(env: Env): Promise<Set<string>> {
   return new Set(statuses.filter(([, value]) => {
     const record = value as { status?: string; checked_at?: number | string; checkedAt?: number | string } | null;
     const checkedAt = parseTimestamp(record?.checked_at ?? record?.checkedAt);
-    return record?.status !== 'healthy' && Number.isFinite(checkedAt) && checkedAt <= now && now - checkedAt <= 15 * 60 * 1000;
+    return record?.status !== 'healthy' && Number.isFinite(checkedAt) && checkedAt <= now && now - checkedAt <= 6 * 60 * 60 * 1000;
   }).map(([provider]) => provider));
 }
 
@@ -48,4 +48,5 @@ export async function scheduledMaintenance(env: Env): Promise<void> {
   const start = new Date(); start.setUTCHours(0, 0, 0, 0);
   await env.DB.prepare('INSERT INTO daily_stats (day, requests, failures) SELECT date(created_at / 1000, \'unixepoch\'), COUNT(*), SUM(CASE WHEN status >= 500 THEN 1 ELSE 0 END) FROM request_logs WHERE created_at >= ? AND created_at < ? GROUP BY 1 ON CONFLICT(day) DO UPDATE SET requests = excluded.requests, failures = excluded.failures').bind(start.getTime(), start.getTime() + 86400000).run();
   await env.DB.prepare('DELETE FROM request_logs WHERE created_at < ?').bind(Date.now() - 30 * 86400000).run();
+  await env.DB.prepare("DELETE FROM provider_health_history WHERE checked_at < datetime('now', '-30 days')").run();
 }

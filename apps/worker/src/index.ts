@@ -23,7 +23,7 @@ import {
   recordRequest,
   scheduledMaintenance,
 } from "./state";
-import { probeProviders, refreshCatalog, refreshProviderModels } from "./probe";
+import { probeProviders, refreshCatalog, refreshProviderModels, withMaintenanceLease } from "./probe";
 import { githubCallback, startGithub } from "./auth/github-oauth";
 import { readSession, revokeSession, invalidateUserSessions } from "./auth/sessions";
 import { generateApiKey, hashApiKey, keyPrefix } from "./sponsors/keys";
@@ -620,14 +620,18 @@ const handler = {
     return error("Not found", 404);
   },
   async scheduled(controller: ScheduledController, env: Env): Promise<void> {
-    const models = await catalog(env);
     await scheduledMaintenance(env);
-    const cursorKey = `provider:probe:cursor:${controller.cron.replace(/[^a-z0-9]+/gi, '-')}`;
-    await probeProviders(env, models, cursorKey);
     if (controller.cron === '0 0 * * *') {
-      await refreshProviderModels(env);
-      await refreshCatalog(env, models);
+      await withMaintenanceLease(env, 'provider-catalog', async () => {
+        const models = await catalog(env);
+        await refreshProviderModels(env);
+        await refreshCatalog(env, models);
+      });
+      return;
     }
+    const models = await catalog(env);
+    const cursorKey = `provider:probe:cursor:${controller.cron.replace(/[^a-z0-9]+/gi, '-')}`;
+    await withMaintenanceLease(env, 'provider-health', () => probeProviders(env, models, cursorKey));
   },
   async queue(batch: MessageBatch<unknown>): Promise<void> {
     for (const message of batch.messages) message.ack();

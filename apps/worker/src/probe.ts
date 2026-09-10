@@ -8,6 +8,7 @@ const keys: Record<string, keyof Env> = { pollinations: 'POLLINATIONS_URL', llm7
 const PROBE_CONCURRENCY = 4;
 const PROVIDER_BATCH_SIZE = 24;
 const HEALTH_CURSOR_KEY = 'provider:probe:cursor';
+const HEALTH_TTL_SECONDS = 21600;
 const CATALOG_CURSOR_KEY = 'provider:catalog:cursor';
 
 async function mapWithConcurrency<T>(items: T[], concurrency: number, task: (item: T) => Promise<void>): Promise<void> {
@@ -21,12 +22,12 @@ async function mapWithConcurrency<T>(items: T[], concurrency: number, task: (ite
   await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, worker));
 }
 
-async function providerBatch(env: Env, cursorKey: string): Promise<{ providers: RegisteredProvider[]; nextCursor: number }> {
+async function providerBatch(env: Env, cursorKey: string): Promise<{ providers: RegisteredProvider[]; nextCursor: string }> {
   const registry = new ProviderRegistry(env);
-  const cursor = Number.parseInt((await env.BUDGETS.get(cursorKey)) ?? '0', 10);
-  const offset = Number.isFinite(cursor) && cursor >= 0 ? cursor : 0;
-  const batch = await registry.getEnabledProviderBatch(PROVIDER_BATCH_SIZE, offset);
-  return { providers: batch.providers, nextCursor: batch.hasMore ? batch.nextOffset : 0 };
+  const cursor = (await env.BUDGETS.get(cursorKey)) ?? '';
+  const afterName = /^\d+$/.test(cursor) ? '' : cursor;
+  const batch = await registry.getEnabledProviderBatch(PROVIDER_BATCH_SIZE, afterName);
+  return { providers: batch.providers, nextCursor: batch.hasMore ? batch.nextCursor : '' };
 }
 
 function probeUrl(provider: string, env: Env): string {
@@ -56,17 +57,17 @@ export async function probeProviders(env: Env, models: Model[], cursorKey = HEAL
     try {
       const health = await provider.adapter.checkHealth();
       await registry.updateHealth(provider.id, health);
-      await env.BUDGETS.put(`health:${provider.name}`, JSON.stringify({ status: health.status === 'down' ? 'unhealthy' : health.status, latency: health.latencyMs, checked_at: Date.now() }), { expirationTtl: 7200 });
+      await env.BUDGETS.put(`health:${provider.name}`, JSON.stringify({ status: health.status === 'down' ? 'unhealthy' : health.status, latency: health.latencyMs, checked_at: Date.now() }), { expirationTtl: HEALTH_TTL_SECONDS });
     } catch (error) {
       console.error(`[provider-probe] ${provider.name} failed`, error);
-      await env.BUDGETS.put(`health:${provider.name}`, JSON.stringify({ status: 'unhealthy', checked_at: Date.now() }), { expirationTtl: 7200 });
+      await env.BUDGETS.put(`health:${provider.name}`, JSON.stringify({ status: 'unhealthy', checked_at: Date.now() }), { expirationTtl: HEALTH_TTL_SECONDS });
     }
   });
 
   const legacy = [...new Set(models.map((model) => model.provider))].filter((provider) => !registeredNames.has(provider));
   await mapWithConcurrency(legacy, PROBE_CONCURRENCY, async (provider) => {
     const result = await probeProvider(provider, env);
-    await env.BUDGETS.put(`health:${provider}`, JSON.stringify({ ...result, checked_at: Date.now() }), { expirationTtl: 7200 });
+    await env.BUDGETS.put(`health:${provider}`, JSON.stringify({ ...result, checked_at: Date.now() }), { expirationTtl: HEALTH_TTL_SECONDS });
   });
   await env.BUDGETS.put(cursorKey, String(batch.nextCursor), { expirationTtl: 86400 });
 }
@@ -85,6 +86,24 @@ export async function refreshProviderModels(env: Env): Promise<void> {
     }
   });
   if (!failed) await env.BUDGETS.put(CATALOG_CURSOR_KEY, String(batch.nextCursor), { expirationTtl: 604800 });
+}
+
+export async function withMaintenanceLease<T>(env: Env, name: string, task: () => Promise<T>): Promise<T | undefined> {
+  if (!env.DB) return task();
+  const holder = crypto.randomUUID();
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString().slice(0, 19).replace('T', ' ');
+  const claim = await env.DB.prepare(
+    `INSERT INTO worker_maintenance_leases (name, holder, expires_at)
+     VALUES (?, ?, ?)
+     ON CONFLICT(name) DO UPDATE SET holder = excluded.holder, expires_at = excluded.expires_at
+     WHERE worker_maintenance_leases.expires_at <= CURRENT_TIMESTAMP`,
+  ).bind(name, holder, expiresAt).run();
+  if ((claim.meta?.changes ?? 0) !== 1) return undefined;
+  try {
+    return await task();
+  } finally {
+    await env.DB.prepare('DELETE FROM worker_maintenance_leases WHERE name = ? AND holder = ?').bind(name, holder).run();
+  }
 }
 
 export async function refreshCatalog(env: Env, models: Model[]): Promise<void> {
