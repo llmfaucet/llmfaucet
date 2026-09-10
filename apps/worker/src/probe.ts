@@ -1,11 +1,14 @@
 import type { Env, Model } from './types';
 import { MODELS } from './catalog';
-import { ProviderRegistry } from './services/provider-registry';
+import { ProviderRegistry, type RegisteredProvider } from './services/provider-registry';
 import { SUPPORTED_CATALOG_PROVIDERS } from './providers/factory';
 
 const defaults: Record<string, string> = { pollinations: 'https://text.pollinations.ai/openai', llm7: 'https://api.llm7.io/v1/chat/completions', 'opencode-zen': 'https://opencode.ai/zen/v1/chat/completions', ovh: 'https://oai.endpoints.kepler.ai.cloud.ovh.net/v1/chat/completions', 'ai-horde': 'https://aihorde.net/api/v2/status' };
 const keys: Record<string, keyof Env> = { pollinations: 'POLLINATIONS_URL', llm7: 'LLM7_URL', 'opencode-zen': 'OPENCODE_ZEN_URL', ovh: 'OVH_URL', 'ai-horde': 'AI_HORDE_URL' };
 const PROBE_CONCURRENCY = 4;
+const PROVIDER_BATCH_SIZE = 12;
+const HEALTH_CURSOR_KEY = 'provider:probe:cursor';
+const CATALOG_CURSOR_KEY = 'provider:catalog:cursor';
 
 async function mapWithConcurrency<T>(items: T[], concurrency: number, task: (item: T) => Promise<void>): Promise<void> {
   let next = 0;
@@ -16,6 +19,15 @@ async function mapWithConcurrency<T>(items: T[], concurrency: number, task: (ite
     }
   };
   await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, worker));
+}
+
+async function providerBatch(env: Env, cursorKey: string): Promise<RegisteredProvider[]> {
+  const registry = new ProviderRegistry(env);
+  const cursor = Number.parseInt((await env.BUDGETS.get(cursorKey)) ?? '0', 10);
+  const offset = Number.isFinite(cursor) && cursor >= 0 ? cursor : 0;
+  const providers = await registry.getEnabledProviders(PROVIDER_BATCH_SIZE, offset);
+  await env.BUDGETS.put(cursorKey, String(providers.length < PROVIDER_BATCH_SIZE ? 0 : offset + PROVIDER_BATCH_SIZE), { expirationTtl: 86400 });
+  return providers;
 }
 
 function probeUrl(provider: string, env: Env): string {
@@ -38,7 +50,7 @@ export async function probeProvider(provider: string, env: Env, fetcher: typeof 
 
 export async function probeProviders(env: Env, models: Model[]): Promise<void> {
   const registry = new ProviderRegistry(env);
-  const registered = await registry.getEnabledProviders();
+  const registered = await providerBatch(env, HEALTH_CURSOR_KEY);
   const registeredNames = new Set(registered.map((provider) => provider.name));
   await mapWithConcurrency(registered, PROBE_CONCURRENCY, async (provider) => {
     try {
@@ -55,6 +67,18 @@ export async function probeProviders(env: Env, models: Model[]): Promise<void> {
   await mapWithConcurrency(legacy, PROBE_CONCURRENCY, async (provider) => {
     const result = await probeProvider(provider, env);
     await env.BUDGETS.put(`health:${provider}`, JSON.stringify({ ...result, checked_at: Date.now() }), { expirationTtl: 7200 });
+  });
+}
+
+export async function refreshProviderModels(env: Env): Promise<void> {
+  const registry = new ProviderRegistry(env);
+  const providers = await providerBatch(env, CATALOG_CURSOR_KEY);
+  await mapWithConcurrency(providers, PROBE_CONCURRENCY, async (provider) => {
+    try {
+      await registry.refreshModels(provider.id);
+    } catch (error) {
+      console.error(`[provider-catalog] ${provider.name} failed`, error);
+    }
   });
 }
 

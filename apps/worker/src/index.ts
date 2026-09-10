@@ -23,7 +23,7 @@ import {
   recordRequest,
   scheduledMaintenance,
 } from "./state";
-import { probeProviders, refreshCatalog } from "./probe";
+import { probeProviders, refreshCatalog, refreshProviderModels } from "./probe";
 import { githubCallback, startGithub } from "./auth/github-oauth";
 import { readSession, revokeSession, invalidateUserSessions } from "./auth/sessions";
 import { generateApiKey, hashApiKey, keyPrefix } from "./sponsors/keys";
@@ -623,7 +623,10 @@ const handler = {
     const models = await catalog(env);
     await scheduledMaintenance(env);
     await probeProviders(env, models);
-    if (controller.cron === '0 0 * * *') await refreshCatalog(env, models);
+    if (controller.cron === '0 0 * * *') {
+      await refreshProviderModels(env);
+      await refreshCatalog(env, models);
+    }
   },
   async queue(batch: MessageBatch<unknown>): Promise<void> {
     for (const message of batch.messages) message.ack();

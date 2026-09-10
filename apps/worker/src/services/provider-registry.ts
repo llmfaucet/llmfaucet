@@ -69,8 +69,9 @@ export class ProviderRegistry {
     return result.results ?? [];
   }
 
-  async getEnabledProviders(): Promise<RegisteredProvider[]> {
-    const rows = await this.rows<Record<string, unknown>>("SELECT * FROM providers WHERE is_enabled = 1 AND adapter_type != 'ai-horde' ORDER BY priority DESC, weight DESC");
+  async getEnabledProviders(limit?: number, offset = 0): Promise<RegisteredProvider[]> {
+    const paging = Number.isFinite(limit) ? ` LIMIT ${Math.max(1, Math.floor(limit as number))} OFFSET ${Math.max(0, Math.floor(offset))}` : '';
+    const rows = await this.rows<Record<string, unknown>>(`SELECT * FROM providers WHERE is_enabled = 1 AND adapter_type != 'ai-horde' ORDER BY priority DESC, weight DESC${paging}`);
     const providers: RegisteredProvider[] = [];
     for (const row of rows) {
       const id = String(row.id);
